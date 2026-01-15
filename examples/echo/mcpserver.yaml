@@ -1,0 +1,6 @@
+# These are defaults, shown for example only.
+# You don't technically need a config for this echo example
+server:
+  transport: http
+  port: 8089
+  host: "0.0.0.0"

@@ -27,30 +27,30 @@ class ToolManager:
         module = importlib.import_module(module_path)
         return getattr(module, function)
 
-    def register_tool(self, mcp, tool_path: str):
+    def register_tool(self, mcp, tool_path: str, name: str = None):
         """
         Register an mcp function directly.
         """
         func = self.load_function(tool_path)
-        endpoint = Tool.from_function(func, name=func.__name__)
+        endpoint = Tool.from_function(func, name=name or func.__name__)
         mcp.add_tool(endpoint)
         return endpoint
 
-    def register_resource(self, mcp, tool_path: str):
+    def register_resource(self, mcp, tool_path: str, name: str = None):
         """
         Register an mcp resource directly.
         """
         func = self.load_function(tool_path)
-        endpoint = Resource.from_function(func, name=func.__name__)
+        endpoint = Resource.from_function(func, name=name or func.__name__)
         mcp.add_resource(endpoint)
         return endpoint
 
-    def register_prompt(self, mcp, tool_path: str):
+    def register_prompt(self, mcp, tool_path: str, name: str = None):
         """
         Register an mcp resource directly.
         """
         func = self.load_function(tool_path)
-        endpoint = Prompt.from_function(func, name=func.__name__)
+        endpoint = Prompt.from_function(func, name=name or func.__name__)
         mcp.add_prompt(endpoint)
         return endpoint
 
@@ -101,12 +101,12 @@ class ToolManager:
             discovered[tool_id] = {"path": file_path, "module": import_path, "root": root_path}
         return discovered
 
-    def load_tools(self, mcp, names=None, include=None, exclude=None):
+    def load_tools(self, mcp, include=None, exclude=None):
         """
         Load a set of named tools, or default to all those discovered.
         """
         # If no tools are selected... select all tools discovered
-        names = names or self.tools
+        names = self.tools
         include = "(%s)" % "|".join(include) if include else None
         exclude = "(%s)" % "|".join(exclude) if exclude else None
 

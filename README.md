@@ -1,10 +1,10 @@
-# mcpserver
+# mcp-serve
 
 > Agentic Server to support MCP Tools and Science
 
-![img/mcpserver.png](img/mcpserver.png)
+![https://github.com/converged-computing/mcpserver/blob/main/img/mcpserver.png?raw=true](https://github.com/converged-computing/mcpserver/blob/main/img/mcpserver.png?raw=true)
 
-[![PyPI version](https://badge.fury.io/py/mcpserver.svg)](https://badge.fury.io/py/mcpserver)
+[![PyPI version](https://badge.fury.io/py/mcp-serve.svg)](https://badge.fury.io/py/mcp-serve)
 
 ## Design
 
@@ -34,7 +34,7 @@ There are different means to add tools here:
  - **external modules**: externally discovered via the same mechanism.
  - **external one-off**: add a specific tool, prompt, or resource to a server (suggested)
 
-I am suggesting a combined approach of the first and last bullet for security. E.g., when we deploy, we do not want to open a hole to add functions that are not known. In the context of a job, we likely have a specific need or use case and can select from a library. I am developed scoped tools with this aim or goal -- to be able to deploy a job and start a server within the context of the job with exactly what is needed. Here is how the module discovery works:
+I am suggesting a combined approach of the first and last bullet for security. E.g., when we deploy, we do not want to open a hole to add functions that are not known. In the context of a job, we likely have a specific need or use case and can select from a library. I am developing scoped tools with this aim or goal -- to be able to deploy a job and start a server within the context of the job with exactly what is needed. Here is how the module discovery works:
 
 ```python
 from mcpserver.tools.manager import ToolManager
@@ -48,9 +48,6 @@ manager.register("mcpserver.tools")
 # Register a different module
 manager.register("mymodule.tools")
 ```
-
-See the code in [mcpserver/cli/start.py](mcpserver/cli/start.py) for how to use the manager with the server here.
-
 
 ## Development
 
@@ -107,10 +104,12 @@ Start the server with the functions and prompt we need:
 mcpserver start -t http --port 8089 \
   --prompt hpc_mcp.t.build.docker.docker_build_persona_prompt \
   --tool hpc_mcp.t.build.docker.docker_build_container
+
+# Start with a configuration file instead
+mcpserver start -t http --port 8089 --config ./examples/docker-build/mcpserver.yaml
 ```
 
-And then use an agentic framework to run some plan to interact with tools. Here is how you would call them manually.
-Note for docker build you need the server running on a system with docker or podman.
+And then use an agentic framework to run some plan to interact with tools. Here is how you would call them manually, assuming the second start method above with custom function names. Note for docker build you need the server running on a system with docker or podman.
 
 ```bash
 # Generate a build prompt
@@ -120,7 +119,7 @@ python3 examples/docker-build/docker_build_prompt.py
 python3 examples/docker-build/test_docker_build.py
 ```
 
-### List Tools
+### Listing
 
 Agents discover tools with this endpoint. We can call it too!
 
@@ -132,7 +131,7 @@ python3 examples/list_prompts.py
 ### JobSpec Translation
 
 Here is a server that shows translation of a job specification with Flux.
-The DevContainer has Flux for you to use. Thus, to prototype with Flux, open the code in the devcontainer. Install the library and start a flux instance.
+To prototype with Flux, open the code in the devcontainer. Install the library and start a flux instance.
 
 ```bash
 pip install -e .[all] --break-system-packages
@@ -150,14 +149,14 @@ mcpserver start -t http --port 8089 \
   --prompt flux_mcp.transformer.transform_jobspec_persona
 ```
 
+And with the configuration file instead:
 
-#### TODO
+```bash
+mcpserver start -t http --port 8089 --config ./examples/jobspec/mcpserver.yaml
+```
 
-- Config file to start a server (with custom set of functions).
-- Flux examples (can be done elsewhere)
-- Basic docker build and example (with Flux)
-- Kubernetes single Manifests (deployment with sidecar, configmap, headless service)
-- Kubernetes Operator to extend above
+We will provide examples for jobspec translation functions in [fractale-mcp](https://github.com/compspec/fractale-mcp).
+
 
 ### Design Choices
 
@@ -170,6 +169,12 @@ Here are a few design choices (subject to change, of course). I am starting with
 - Async is annoying but I'm using it. This means debugging is largely print statements and not interactive.
 - The backend of FastMCP is essentially starlette, so we define (and add) other routes to the server.
 
+## TODO
+
+- Then write dockerfile for one container
+- Then write example with Docker container and flux, or other examples
+- Then Kubernetes manifest with kind
+- Then full operator
 
 ## License
 

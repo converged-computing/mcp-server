@@ -38,11 +38,6 @@ def get_parser():
         action="store_true",
     )
     parser.add_argument(
-        "--config-dir",
-        dest="config_dir",
-        help="Fractale configuration directory to store subsystems. Defaults to ~/.mcpserver",
-    )
-    parser.add_argument(
         "--version",
         dest="version",
         help="show software version.",
@@ -64,7 +59,6 @@ def get_parser():
         formatter_class=argparse.RawTextHelpFormatter,
         description="generate subsystem metadata for a cluster",
     )
-    start.add_argument("tools", help="tools to start", nargs="*")
     start.add_argument(
         "--port", default=default_port, type=int, help="port to run the agent gateway"
     )
@@ -89,6 +83,9 @@ def get_parser():
     start.add_argument("--prompt", action="append", help="Direct prompt to import.", default=[])
     start.add_argument("--include", help="Include tags", action="append", default=None)
     start.add_argument("--exclude", help="Exclude tag", action="append", default=None)
+    start.add_argument("--path", help="Server path for mcp", default="/mcp")
+    start.add_argument("--config", help="Configuration file for server.")
+
     start.add_argument(
         "--mask-error_details",
         help="Mask error details (for higher security deployments)",
