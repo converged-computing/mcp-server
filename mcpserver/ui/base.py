@@ -1,0 +1,58 @@
+from typing import Optional, Protocol
+
+from mcpserver.logger import logger
+
+
+class UserInterface(Protocol):
+    """
+    The strict contract that ManagerAgent relies on.
+    Any implementation (Web, TUI, CLI) must provide these methods.
+    """
+
+    def log(self, message: str, level: str = "info", do_handle: bool = True):
+        """
+        Main (general) log that is akin to info.
+        """
+        if not message:
+            return True
+        if hasattr(self, "on_log"):
+            self.on_log(message, level)
+        else:
+            # We don't want any logging here
+            if do_handle:
+                logger.info(message)
+            return False
+
+    def log_update(self, *args, **kwargs):
+        """
+        Send update message to log (if supports)
+        """
+        if hasattr(self, "on_step_update"):
+            self.on_step_update(*args, **kwargs)
+
+    def log_finish(self, *args, **kwargs):
+        """
+        Send finish message to log (if supports)
+        """
+        if hasattr(self, "on_step_finish"):
+            self.on_step_finish(*args, **kwargs)
+
+    def log_start(self, *args, **kwargs):
+        """
+        Send start message to log (if supports)
+        """
+        if hasattr(self, "on_step_start"):
+            self.on_step_start(*args, **kwargs)
+
+    def log_workflow_complete(self, *args, **kwargs):
+        """
+        The whole plan finishes.
+        """
+        if hasattr(self, "on_workflow_complete"):
+            self.on_workflow_complete(*args, **kwargs)
+
+    def ask_user(self, question: str, options: list[str] = None) -> str:
+        """
+        The Manager pauses until the user answers (blocking)
+        """
+        pass

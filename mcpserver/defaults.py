@@ -1,0 +1,1 @@
+mcpserver_dir = ".mcpserver"
