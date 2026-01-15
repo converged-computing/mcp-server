@@ -24,7 +24,7 @@ async def call_tool(dockerfile: str):
         for tool in tools:
             print(f"  ⭐ Discovered tool: {tool.name}")
         print()
-        result = await client.call_tool("docker_build_container", {"dockerfile": dockerfile})
+        result = await client.call_tool("build_container", {"dockerfile": dockerfile})
         print(result)
 
 try:

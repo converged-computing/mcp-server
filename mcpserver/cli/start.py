@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from mcpserver.app import init_mcp
+from mcpserver.core.config import MCPConfig
 
 # These are routes also served here
 from mcpserver.routes import *
@@ -16,26 +17,32 @@ def main(args, extra, **kwargs):
     Starts the MCP Gateway with the specified tools.
     Usage: mcpserver start <tool-a> <tool-b>
     """
-    mcp = init_mcp(args.exclude, args.include, args.mask_error_details)
+    if args.config is not None:
+        print(f"📖 Loading config from {args.config}")
+        cfg = MCPConfig.from_yaml(args.config)
+    else:
+        cfg = MCPConfig.from_args(args)
+
+    mcp = init_mcp(cfg.exclude, cfg.include, args.mask_error_details)
 
     # Create ASGI app from MCP server
-    mcp_app = mcp.http_app(path="/mcp")
+    mcp_app = mcp.http_app(path=cfg.server.path)
     app = FastAPI(title="MCP Server", lifespan=mcp_app.lifespan)
-
-    # Add additional module paths (custom out of tree modules)
-    for path in args.tool_module:
-        print(f"🧐 Registering additional module: {path}")
-        manager.register(path)
 
     # Dynamic Loading of Tools
     print(f"🔌 Loading tools... ")
 
-    # Load into the manager (tools, resources, prompts)
-    for tool in manager.load_tools(mcp, args.tools, args.include, args.exclude):
-        print(f"   ✅ Registered: {tool.name}")
+    # Add additional module paths (custom out of tree modules)
+    for path in cfg.discovery:
+        print(f"🧐 Registering additional module: {path}")
+        manager.register(path)
 
-    # Plus additional tools, prompts, resources
-    for tool in register(mcp, args):
+    # explicit egistration
+    for endpoint in register(mcp, cfg):
+        print(f"   ✅ Registered: {endpoint.name}")
+
+    # Load into the manager (tools, resources, prompts)
+    for tool in manager.load_tools(mcp, cfg.include, cfg.exclude):
         print(f"   ✅ Registered: {tool.name}")
 
     # Mount the MCP server. Note from V: we can use mount with antother FastMCP
@@ -44,27 +51,31 @@ def main(args, extra, **kwargs):
     try:
 
         # http transports can accept a host and port
-        if "http" in args.transport:
-            mcp.run(transport=args.transport, port=args.port, host=args.host)
+        if "http" in cfg.server.transport:
+            mcp.run(transport=cfg.server.transport, port=cfg.server.port, host=cfg.server.host)
 
         # stdio does not!
         else:
-            mcp.run(transport=args.transport)
+            mcp.run(transport=cfg.transport)
 
     # For testing we usually control+C, let's not make it ugly
     except KeyboardInterrupt:
         print("🖥️  Shutting down...")
 
 
-def register(mcp, args):
+def register(mcp, cfg: MCPConfig):
     """
-    Register additional tools, resources, and prompts.
+    Registers specific tools, prompts, and resources defined in the config.
+    Replaces the previous args-based register function.
     """
-    for path in args.tool:
-        yield manager.register_tool(mcp, path)
+    # Define which config lists map to which manager methods
+    registries = [
+        (cfg.tools, manager.register_tool),
+        (cfg.prompts, manager.register_prompt),
+        (cfg.resources, manager.register_resource),
+    ]
 
-    for path in args.resource:
-        yield manager.register_resource(mcp, path)
-
-    for path in args.prompt:
-        yield manager.register_prompt(mcp, path)
+    for capability_list, register_func in registries:
+        for item in capability_list:
+            # item is a CapabilityConfig object with .path and .name
+            yield register_func(mcp, item.path, name=item.name)

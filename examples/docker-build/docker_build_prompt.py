@@ -25,7 +25,7 @@ async def call_tool(application: str):
         for tool in tools:
             print(f"  ⭐ Discovered prompt: {tool.name}")
         print()
-        result = await client.get_prompt("docker_build_persona_prompt", {"application": application})
+        result = await client.get_prompt("build_expert", {"application": application})
         print(result.messages[0])
 
 try:
