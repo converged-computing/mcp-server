@@ -30,10 +30,11 @@ clean:
 
 arm:
 	@echo "Building arm Docker image $(FULL_IMAGE_NAME)..."
-	docker build \
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
 		-f $(DOCKERFILE_PATH) \
 		-t $(FULL_ARM_IMAGE) \
-		.
+		--load .
 	@echo "Docker image $(FULL_ARM_IMAGE) built successfully."
 
 .PHONY: all build push clean arm

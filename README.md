@@ -176,6 +176,13 @@ mcpserver start -t http --port 8089 --config ./examples/jobspec/mcpserver.yaml
 
 We will provide examples for jobspec translation functions in [fractale-mcp](https://github.com/compspec/fractale-mcp).
 
+### Kubernetes (kind)
+
+This example is for basic manifests to work in Kind (or Kubernetes/Openshift). Note that we use the default base container with a custom function added via ConfigMap. You can take this approach, or build ON our base container and pip install your own functions for use.
+
+- [examples/kind](examples/kind)
+
+We will be making a Kubernetes Operator to create this set of stuff soon.
 
 ### Design Choices
 
