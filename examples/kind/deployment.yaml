@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-server
+  labels:
+    app: hpc-mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hpc-mcp
+  template:
+    metadata:
+      labels:
+        app: hpc-mcp
+    spec:
+      containers:
+      - name: mcp-server
+        image: ghcr.io/converged-computing/mcp-server:latest
+        imagePullPolicy: Always
+        args: ["--config", "/etc/mcp/mcpserver.yaml"]
+        ports:
+        - containerPort: 8089
+        env:
+        - name: PYTHONPATH
+          value: "/code:/mnt/custom"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/mcp/mcpserver.yaml
+          subPath: mcpserver.yaml
+        - name: tool-volume
+          mountPath: /mnt/custom/custom_tools/echo.py
+          subPath: echo.py
+      volumes:
+      - name: config-volume
+        configMap:
+          name: mcp-server-config
+      - name: tool-volume
+        configMap:
+          name: mcp-server-config
