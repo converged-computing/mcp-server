@@ -1,7 +1,7 @@
 __version__ = "0.0.1"
 AUTHOR = "Vanessa Sochat"
 AUTHOR_EMAIL = "vsoch@users.noreply.github.com"
-NAME = "mcp-node"
+NAME = "mcp-serve"
 PACKAGE_URL = "https://github.com/converged-computing/mcp-server"
 KEYWORDS = "cluster, orchestration, mcp, server, agents"
 DESCRIPTION = "Agentic server to support MCP tools for science"
