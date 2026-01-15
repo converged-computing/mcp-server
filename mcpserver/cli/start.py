@@ -56,7 +56,7 @@ def main(args, extra, **kwargs):
 
         # stdio does not!
         else:
-            mcp.run(transport=cfg.transport)
+            mcp.run(transport=cfg.server.transport)
 
     # For testing we usually control+C, let's not make it ugly
     except KeyboardInterrupt:

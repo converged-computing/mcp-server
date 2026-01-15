@@ -57,6 +57,26 @@ It is recommended to open in VSCode container. Then install:
 pip install --break-system-packages -e .
 ```
 
+### Docker
+
+To build the Docker container:
+
+```bash
+make
+```
+
+To run a dummy example:
+
+```bash
+docker run -p 8089:8089 -it ghcr.io/converged-computing/mcp-server:latest
+```
+
+And then interact from the outside:
+
+```bash
+python3 ./examples/echo/test_echo.py
+```
+
 ### Environment
 
 The following variables can be set in the environment.
@@ -67,7 +87,6 @@ The following variables can be set in the environment.
 | `MCPSERVER_TOKEN` | Token to use for testing | unset |
 
 ## Examples
-
 
 ### Simple Echo
 
