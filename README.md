@@ -197,10 +197,7 @@ Here are a few design choices (subject to change, of course). I am starting with
 
 ## TODO
 
-- Then write dockerfile for one container
-- Then write example with Docker container and flux, or other examples
-- Then Kubernetes manifest with kind
-- Then full operator
+- Full operator with Flux example (Flux operator with HPC apps and jobspec translation)
 
 ## License
 
