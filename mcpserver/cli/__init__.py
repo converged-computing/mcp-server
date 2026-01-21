@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+from mcpserver.cli.logging import *
 
 # This will pretty print all exceptions in rich
 from rich.traceback import install

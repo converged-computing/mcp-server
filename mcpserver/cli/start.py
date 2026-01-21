@@ -31,6 +31,7 @@ def main(args, extra, **kwargs):
 
     # Dynamic Loading of Tools
     print(f"🔌 Loading tools... ")
+    async_mode = getattr(cfg, "async_execution", False)
 
     # Add additional module paths (custom out of tree modules)
     for path in cfg.discovery:
@@ -77,5 +78,6 @@ def register(mcp, cfg: MCPConfig):
 
     for capability_list, register_func in registries:
         for item in capability_list:
-            # item is a CapabilityConfig object with .path and .name
-            yield register_func(mcp, item.path, name=item.name)
+            as_job = item.job if item.job is not None else cfg.jobs.enabled
+            # item is a Capability object with .path and .name
+            yield register_func(mcp, item.path, name=item.name, as_job=as_job)

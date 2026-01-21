@@ -10,6 +10,7 @@ from fastmcp.resources import Resource
 
 # These are the function types we want to discover
 from fastmcp.tools import Tool
+from mcpserver.core.execution import make_async_job
 
 from .base import BaseTool
 
@@ -27,16 +28,22 @@ class ToolManager:
         module = importlib.import_module(module_path)
         return getattr(module, function)
 
-    def register_tool(self, mcp, tool_path: str, name: str = None):
+    def register_tool(self, mcp, tool_path: str, name: str = None, as_job: bool = False):
         """
         Register an mcp function directly.
         """
         func = self.load_function(tool_path)
+
+        # Asynchronous execution works more like a job, returning an id (future)
+        if as_job:
+            print(f"   ⚡ Wrapping {name} as Async Job")
+            func = make_async_job(func)
+
         endpoint = Tool.from_function(func, name=name or func.__name__)
         mcp.add_tool(endpoint)
         return endpoint
 
-    def register_resource(self, mcp, tool_path: str, name: str = None):
+    def register_resource(self, mcp, tool_path: str, name: str = None, **kwargs):
         """
         Register an mcp resource directly.
         """
@@ -45,7 +52,7 @@ class ToolManager:
         mcp.add_resource(endpoint)
         return endpoint
 
-    def register_prompt(self, mcp, tool_path: str, name: str = None):
+    def register_prompt(self, mcp, tool_path: str, name: str = None, **kwargs):
         """
         Register an mcp resource directly.
         """
@@ -101,7 +108,7 @@ class ToolManager:
             discovered[tool_id] = {"path": file_path, "module": import_path, "root": root_path}
         return discovered
 
-    def load_tools(self, mcp, include=None, exclude=None):
+    def load_tools(self, mcp, include=None, exclude=None, mark_all_jobs: bool = False):
         """
         Load a set of named tools, or default to all those discovered.
         """
@@ -143,6 +150,17 @@ class ToolManager:
 
                 # Get the decorated functions
                 for func in getfunc():
+
+                    is_job = getattr(func, "_is_job", mark_all_jobs)
+
+                    # Only apply to Tools, not Prompts/Resources
+                    if ToolClass == Tool and is_job:
+
+                        # Preserve MCP name if set by decorator
+                        original_name = getattr(func, "_mcp_name", None)
+                        func = make_async_job(func)
+                        if original_name:
+                            func._mcp_name = original_name
 
                     # This is how we handle dynamic loading
                     endpoint = ToolClass.from_function(func, name=func._mcp_name)
