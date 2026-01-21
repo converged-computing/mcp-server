@@ -2,7 +2,7 @@ import mcpserver.tools.prompts as prompts
 
 PERSONA = "You are a workflow status expert."
 
-CONTEXT = "We just completed a step in an orchestration. We need to determine the final status."
+CONTEXT = "We just completed a step in an orchestration. We need to determine the final status. If you see a return code and it is 0, you MUST indicate success."
 
 REQUIRES = [
     "You MUST return a single json structure with a single field 'action'",
