@@ -10,6 +10,7 @@ from rich.traceback import install
 install()
 
 import mcpserver
+from mcpserver.cli.args import populate_start_args
 from mcpserver.logger import setup_logger
 
 default_port = os.environ.get("MCPSERVER_PORT") or 8000
@@ -59,39 +60,7 @@ def get_parser():
         formatter_class=argparse.RawTextHelpFormatter,
         description="generate subsystem metadata for a cluster",
     )
-    start.add_argument(
-        "--port", default=default_port, type=int, help="port to run the agent gateway"
-    )
-
-    # Note from V: SSE is considered deprecated (don't use it...)
-    start.add_argument(
-        "-t",
-        "--transport",
-        default="stdio",
-        help="Transport to use (defaults to stdin)",
-        choices=["stdio", "http", "sse", "streamable-http"],
-    )
-    start.add_argument("--host", default="0.0.0.0", help="Host (defaults to 0.0.0.0)")
-    start.add_argument(
-        "--tool-module",
-        action="append",
-        help="Additional tool module paths to discover from.",
-        default=[],
-    )
-    start.add_argument("--tool", action="append", help="Direct tool to import.", default=[])
-    start.add_argument("--resource", action="append", help="Direct resource to import.", default=[])
-    start.add_argument("--prompt", action="append", help="Direct prompt to import.", default=[])
-    start.add_argument("--include", help="Include tags", action="append", default=None)
-    start.add_argument("--exclude", help="Exclude tag", action="append", default=None)
-    start.add_argument("--path", help="Server path for mcp", default="/mcp")
-    start.add_argument("--config", help="Configuration file for server.")
-
-    start.add_argument(
-        "--mask-error_details",
-        help="Mask error details (for higher security deployments)",
-        action="store_true",
-        default=False,
-    )
+    populate_start_args(start)
     return parser
 
 
