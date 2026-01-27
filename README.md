@@ -83,7 +83,9 @@ The following variables can be set in the environment.
 
 | Name | Description | Default       |
 |-------|------------|---------------|
-| `MCPSERVER_PORT` | Port to run MCP server on, if using http variant | 8089 |
+| `MCPSERVER_PORT` | Port to run MCP server on, if using http variant | `8089` |
+| `MCPSERVER_HOST` | Default host to run MCP server (http) | `0.0.0.0` |
+| `MCPSERVER_PATH` | Default path for server endpoint | `/mcp` |
 | `MCPSERVER_TOKEN` | Token to use for testing | unset |
 
 ## Examples
