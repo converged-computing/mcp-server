@@ -6,10 +6,11 @@ default_port = os.environ.get("MCPSERVER_PORT") or 8000
 default_host = os.environ.get("MCPSERVER_HOST") or "0.0.0.0"
 default_path = os.environ.get("MCPSERVER_PATH") or "/mcp"
 
+
 def populate_start_args(start):
     """
     Given the argparse parser, add start args to it.
-    
+
     We provide this so a secondary library can consistently
     add parsing args to its parser.
     """
