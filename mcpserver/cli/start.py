@@ -1,4 +1,14 @@
+import warnings
+
+import uvicorn
 from fastapi import FastAPI
+
+# Ignore these for now
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="websockets.legacy")
+warnings.filterwarnings(
+    "ignore", category=DeprecationWarning, module="uvicorn.protocols.websockets"
+)
+
 
 from mcpserver.app import init_mcp
 from mcpserver.cli.manager import get_manager
@@ -21,7 +31,7 @@ def main(args, extra, **kwargs):
 
     # Get the tool manager and register discovered tools
     mcp = init_mcp(cfg.exclude, cfg.include, args.mask_error_details)
-    manager = get_manager(mcp, cfg)
+    get_manager(mcp, cfg)
 
     # Create ASGI app from MCP server
     mcp_app = mcp.http_app(path=cfg.server.path)
@@ -34,7 +44,16 @@ def main(args, extra, **kwargs):
 
         # http transports can accept a host and port
         if "http" in cfg.server.transport:
-            mcp.run(transport=cfg.server.transport, port=cfg.server.port, host=cfg.server.host)
+            # mcp.run(transport=cfg.server.transport, port=cfg.server.port, host=cfg.server.host)
+            uvicorn.run(
+                app,
+                host=cfg.server.host,
+                port=cfg.server.port,
+                ssl_keyfile=cfg.server.ssl_keyfile,
+                ssl_certfile=cfg.server.ssl_certfile,
+                timeout_graceful_shutdown=75,
+                timeout_keep_alive=60,
+            )
 
         # stdio does not!
         else:

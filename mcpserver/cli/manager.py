@@ -23,6 +23,10 @@ def get_manager(mcp, cfg):
     for tool in manager.load_tools(mcp, cfg.include, cfg.exclude):
         print(f"   ✅ Registered: {tool.name}")
 
+    # Visual to show user we have ssl
+    if cfg.server.ssl_keyfile is not None and cfg.server.ssl_certfile is not None:
+        print(f"   🔐 SSL Enabled")
+
 
 def register(mcp, cfg: MCPConfig):
     """

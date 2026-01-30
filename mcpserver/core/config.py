@@ -32,6 +32,8 @@ class ServerConfig:
     """
 
     transport: str = defaults.transport
+    ssl_keyfile: str = None
+    ssl_certfile: str = None
     port: int = int(defaults.port)
     host: str = defaults.host
     path: str = defaults.path
@@ -90,7 +92,12 @@ class MCPConfig:
         """
         return cls(
             server=ServerConfig(
-                transport=args.transport, port=args.port, host=args.host, path=args.path
+                transport=args.transport,
+                port=args.port,
+                host=args.host,
+                path=args.path,
+                ssl_certfile=args.ssl_certfile,
+                ssl_keyfile=args.ssl_keyfile,
             ),
             include=args.include,
             exclude=args.exclude,
