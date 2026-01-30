@@ -41,6 +41,9 @@ def populate_start_args(start):
     start.add_argument("--path", help="Server path for mcp", default=default_path)
     start.add_argument("--config", help="Configuration file for server.")
 
+    # Args for ssl
+    start.add_argument("--ssl-keyfile", default=None, help="SSL key file (e.g. key.pem)")
+    start.add_argument("--ssl-certfile", default=None, help="SSL certificate file (e.g. cert.pem)")
     start.add_argument(
         "--mask-error_details",
         help="Mask error details (for higher security deployments)",

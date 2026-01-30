@@ -186,6 +186,43 @@ This example is for basic manifests to work in Kind (or Kubernetes/Openshift). N
 
 We will be making a Kubernetes Operator to create this set of stuff soon.
 
+### SSL
+
+Generate keys
+
+```bash
+mkdir -p ./certs
+openssl req -x509 -newkey rsa:4096 -keyout ./certs/key.pem -out ./certs/cert.pem -sha256 -days 365 -nodes -subj '/CN=localhost'
+```
+
+And start the server, indicating you want to use them.
+
+```bash
+mcpserver start --transport http --port 8089 --ssl-keyfile ./certs/key.pem --ssl-certfile ./certs/cert.pem
+```
+
+For the client, the way that it works is that httpx discovers the certs via [environment variables](https://github.com/modelcontextprotocol/python-sdk/issues/870#issuecomment-3449911720). E.g., try the test first without them:
+
+```bash
+python3 examples/ssl/test_ssl_client.py
+📡 Connecting to https://localhost:8089/mcp...
+❌ Connection failed: Client failed to connect: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate (_ssl.c:1000)
+```
+
+Now export the envars:
+
+```bash
+export SSL_CERT_DIR=$(pwd)/certs
+export SSL_CERT_FILE=$(pwd)/certs/cert.pem
+```
+```console
+📡 Connecting to https://localhost:8089/mcp...
+  ⭐ Discovered tool: simple_echo
+
+✅ Connection successful!
+```
+And you'll see the server get hit.
+
 ### Design Choices
 
 Here are a few design choices (subject to change, of course). I am starting with re-implementing our fractale agents with this framework. For that, instead of agents being tied to specific functions (as classes on their agent functions) we will have a flexible agent class that changes function based on a chosen prompt. It will use mcp functions, prompts, and resources. In addition:
