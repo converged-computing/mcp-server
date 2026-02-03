@@ -88,9 +88,10 @@ The following variables can be set in the environment.
 | `MCPSERVER_PATH` | Default path for server endpoint | `/mcp` |
 | `MCPSERVER_TOKEN` | Token to use for testing | unset |
 
-## Examples
 
-### Simple Echo
+## Usage
+
+### Start the Server
 
 Start the server in one terminal. Export `MCPSERVER_TOKEN` if you want some client to use simple token auth.
 Leave out the token for local test. Here is an example for http.
@@ -99,12 +100,38 @@ Leave out the token for local test. Here is an example for http.
 mcpserver start --transport http --port 8089
 ```
 
-In another terminal, check the health endpoint or do a simple tool request.
+## Endpoints
+
+In addition to standard MCP endpoints that deliver JSON RPC according to [the specification](https://modelcontextprotocol.io/specification/2025-03-26/basic), we provide a set of more easily accessible http endpoints for easy access to server health or metadata.
+
+### Health Check
 
 ```bash
 # Health check
 curl -s http://0.0.0.0:8089/health  | jq
+```
 
+### Listing
+
+You can list tools, prompts, and resources.
+
+```bash
+curl -s http://0.0.0.0:8089/tools/list  | jq
+curl -s http://0.0.0.0:8089/prompts/list  | jq
+curl -s http://0.0.0.0:8089/resources/list  | jq
+```
+
+We do this internally in the server via discovery by the manager, and then returning a simple JSON response of those found.
+
+## Examples
+
+All of these can be run from a separate terminal when the server is running.
+
+### Simple Echo
+
+Do a simple tool request.
+
+```bash
 # Tool to echo back message
 python3 examples/echo/test_echo.py
 ```
