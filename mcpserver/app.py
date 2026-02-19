@@ -26,7 +26,7 @@ mcp = FastMCP(
     version=version.__version__,
     icons=icons,
     # Throw up if we accidentally define a tool with the same name
-    on_duplicate_tools="error",
+    on_duplicate="error",
 )
 
 # Authentication - let's do simple BearerToken from environment for now
