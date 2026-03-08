@@ -250,6 +250,17 @@ export SSL_CERT_FILE=$(pwd)/certs/cert.pem
 ```
 And you'll see the server get hit.
 
+### Starting a Hub
+
+The mcp-server can register worker hubs, which are other MCP servers that register to it. To start the mcpserver as a hub:
+
+```bash
+# Start a hub in one terminal
+mcpserver start --hub
+```
+
+
+
 ### Design Choices
 
 Here are a few design choices (subject to change, of course). I am starting with re-implementing our fractale agents with this framework. For that, instead of agents being tied to specific functions (as classes on their agent functions) we will have a flexible agent class that changes function based on a chosen prompt. It will use mcp functions, prompts, and resources. In addition:

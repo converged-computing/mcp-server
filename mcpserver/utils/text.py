@@ -1,6 +1,15 @@
 import re
 
 
+def sanitize(name: str) -> str:
+    # Replace hyphens/dots with underscores
+    clean = name.replace("-", "_").replace(".", "_")
+    # Python identifiers cannot start with a digit
+    if clean[0].isdigit():
+        clean = f"n_{clean}"
+    return clean
+
+
 def get_code_block(content, code_type=None):
     """
     Parse a code block from the response
