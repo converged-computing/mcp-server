@@ -76,14 +76,13 @@ class HubManager:
             }
             try:
                 async with info["client"] as sess:
-                    # 1. Call the tool
                     mcp_result = await sess.call_tool("get_status", {})
 
-                    # 2. Extract the text content from the MCP wrapper
+                    # Extract the text content from the MCP wrapper
                     # FastMCP result.content is a list of content blocks
                     raw_text = mcp_result.content[0].text
 
-                    # 3. Parse the string back into a dictionary
+                    # Parse the string back into a dictionary
                     try:
                         # Handle potential single quotes from Python's str(dict)
                         status_data = json.loads(raw_text.replace("'", '"'))
@@ -150,7 +149,7 @@ class HubManager:
         # Generate a safe function name
         proxy_name = f"{utils.sanitize(worker_id)}_{utils.sanitize(tool.name)}"
 
-        # FIX: Check if this tool is already registered to avoid ValueError on re-registration
+        # Check if this tool is already registered to avoid ValueError on re-registration
         if proxy_name in self._registered_proxies:
             print(f"🛰️  Re-discovered worker tool: [blue]{proxy_name}[/blue]")
             return
@@ -164,8 +163,8 @@ class HubManager:
         # Create the signature string: arg_1=None, arg_2=None
         arg_string = ", ".join([f"{safe_name}=None" for safe_name in arg_mapping.keys()])
 
-        # 3. Build the dynamic function
-        # FIX: We pass 'self' (the HubManager instance) as 'hub' to the exec scope.
+        # Build the dynamic function
+        # We pass 'self' (the HubManager instance) as 'hub' to the exec scope.
         # This allows the proxy function to look up the LATEST url for the worker
         # every time it is called, instead of using a hardcoded stale URL.
         exec_globals = {

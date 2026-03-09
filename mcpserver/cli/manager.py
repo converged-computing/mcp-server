@@ -6,7 +6,7 @@ manager = ToolManager()
 manager.register()
 
 
-def get_manager(mcp, cfg):
+def get_manager(mcp, cfg, system_type=None):
     """
     Get the common tool manager and register tools.
     """
@@ -20,7 +20,13 @@ def get_manager(mcp, cfg):
         print(f"   ✅ Registered: {endpoint.name}")
 
     # Load into the manager (tools, resources, prompts)
-    for tool in manager.load_tools(mcp, cfg.include, cfg.exclude):
+    # We pass the system_name and system path here
+    for tool in manager.load_tools(
+        mcp,
+        cfg.include,
+        cfg.exclude,
+        system_type=system_type,
+    ):
         print(f"   ✅ Registered: {tool.name}")
 
     # Visual to show user we have ssl

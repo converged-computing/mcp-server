@@ -262,7 +262,20 @@ mcpserver start --hub --hub-secret potato
 In another terminal, start a worker using the token that is generated. Add some functions for fun.
 
 ```bash
-mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --join-secret portato --port 7777
+mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --join-secret potato --port 7777
+```
+
+Note that you can also set the secret in the environemnt.
+
+```bash
+export MCPSERVER_JOIN_SECRET=potato
+mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --port 7777
+```
+
+Register the worker sytem type instead as flux:
+
+```bash
+mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --port 7777 --system-type flux
 ```
 
 Test doing queries for status:
@@ -293,10 +306,9 @@ Here are a few design choices (subject to change, of course). I am starting with
 
 ## TODO
 
-- [ ] join secret should be allowed from environment
-- [ ] debug why port not taking
-- [ ] design --system-name and --system
-- [ ] Need to handle worker disconnect and reconnect.
+- [ ] need to expose tools from system (child worker) instances
+- [ ] need to decide on dispatch strategy / algorithm
+- [ ] add in fluxion queue stats via RPC call to flux status
 
 ## License
 
