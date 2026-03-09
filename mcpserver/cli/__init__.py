@@ -30,7 +30,6 @@ def get_parser():
         default=False,
         action="store_true",
     )
-
     parser.add_argument(
         "--quiet",
         dest="quiet",

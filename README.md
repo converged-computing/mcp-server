@@ -250,6 +250,49 @@ export SSL_CERT_FILE=$(pwd)/certs/cert.pem
 ```
 And you'll see the server get hit.
 
+### Starting a Hub
+
+The mcp-server can register worker hubs, which are other MCP servers that register to it. To start the mcpserver as a hub:
+
+```bash
+# Start a hub in one terminal
+mcpserver start --hub --hub-secret potato
+```
+
+In another terminal, start a worker using the token that is generated. Add some functions for fun.
+
+```bash
+mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --join-secret potato --port 7777
+```
+
+Note that you can also set the secret in the environemnt.
+
+```bash
+export MCPSERVER_JOIN_SECRET=potato
+mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --port 7777
+```
+
+Register the worker sytem type instead as flux:
+
+```bash
+mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --port 7777 --system-type flux
+```
+
+Test doing queries for status:
+
+```bash
+# Get listing of workers and metadata
+python3 ./examples/mcp-query.py
+
+# Get a specific tool metadata from the worker
+python3 ./examples/mcp-query.py http://localhost:7777/mcp get_status
+
+# Call a namespaced tool on the hub (e.g., get the status)
+python3 ./examples/mcp-query.py http://localhost:8000/mcp n_781e903e4f10_get_status
+```
+
+You can test it without the join secret, or a wrong join secret, to see it fail.
+
 ### Design Choices
 
 Here are a few design choices (subject to change, of course). I am starting with re-implementing our fractale agents with this framework. For that, instead of agents being tied to specific functions (as classes on their agent functions) we will have a flexible agent class that changes function based on a chosen prompt. It will use mcp functions, prompts, and resources. In addition:
@@ -263,7 +306,9 @@ Here are a few design choices (subject to change, of course). I am starting with
 
 ## TODO
 
-- Full operator with Flux example (Flux operator with HPC apps and jobspec translation)
+- [ ] need to expose tools from system (child worker) instances
+- [ ] need to decide on dispatch strategy / algorithm
+- [ ] add in fluxion queue stats via RPC call to flux status
 
 ## License
 

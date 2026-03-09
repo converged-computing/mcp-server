@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import socket
 
 default_port = os.environ.get("MCPSERVER_PORT") or 8000
 default_host = os.environ.get("MCPSERVER_HOST") or "0.0.0.0"
@@ -22,7 +23,7 @@ def populate_start_args(start):
     start.add_argument(
         "-t",
         "--transport",
-        default="stdio",
+        default="http",
         help="Transport to use (defaults to stdin)",
         choices=["stdio", "http", "sse", "streamable-http"],
     )
@@ -49,4 +50,53 @@ def populate_start_args(start):
         help="Mask error details (for higher security deployments)",
         action="store_true",
         default=False,
+    )
+
+    # Hub Group
+    hub_group = start.add_argument_group("🦞 Hub Mode")
+    hub_group.add_argument(
+        "--hub",
+        action="store_true",
+        help="Start the server in Hub mode to aggregate remote workers.",
+    )
+    hub_group.add_argument(
+        "--hub-secret",
+        default=os.environ.get("MCP_HUB_SECRET"),
+        help="Secret key required for workers to register. (Auto-generated if omitted)",
+    )
+    start.add_argument(
+        "--system-type",
+        default="generic",
+        help="System type/template (e.g., 'generic', 'flux', 'kubernetes') or a full python module path.",
+    )
+
+    # Worker Registration Group
+    worker_group = start.add_argument_group("🐝 Worker Registration")
+    worker_group.add_argument(
+        "--join", help="URL of the MCP Hub to join (e.g., http://hub-host:8089)"
+    )
+    worker_group.add_argument(
+        "--join-secret",
+        help="The registration secret provided by the Hub.",
+        default=os.environ.get("MCPSERVER_JOIN_SECRET"),
+    )
+    worker_group.add_argument(
+        "--register-id",
+        help="Unique ID for this worker. Defaults to the hostname.",
+        default=socket.gethostname(),
+    )
+    worker_group.add_argument(
+        "--public-url",
+        help="The URL the Hub should use to reach this worker (e.g. http://ip:port/mcp)",
+    )
+    worker_group.add_argument(
+        "--worker-type",
+        default="generic",
+        help="Category of worker (e.g., 'flux', 'kubernetes', 'storage')",
+    )
+    worker_group.add_argument(
+        "--label",
+        action="append",
+        dest="labels",
+        help="Custom labels in key=value format (e.g., --label gpu=h100). Can be used multiple times.",
     )

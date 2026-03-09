@@ -1,4 +1,6 @@
+import asyncio
 import warnings
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
@@ -9,10 +11,12 @@ warnings.filterwarnings(
     "ignore", category=DeprecationWarning, module="uvicorn.protocols.websockets"
 )
 
-
 from mcpserver.app import init_mcp
 from mcpserver.cli.manager import get_manager
 from mcpserver.core.config import MCPConfig
+from mcpserver.core.hub import HubManager
+from mcpserver.core.worker import WorkerManager
+from mcpserver.logger import logger
 
 # These are routes also served here
 from mcpserver.routes import *
@@ -25,17 +29,44 @@ def main(args, extra, **kwargs):
     """
     if args.config is not None:
         print(f"📖 Loading config from {args.config}")
-        cfg = MCPConfig.from_yaml(args.config)
+        cfg = MCPConfig.from_yaml(args.config, args)
     else:
         cfg = MCPConfig.from_args(args)
 
     # Get the tool manager and register discovered tools
     mcp = init_mcp(cfg.exclude, cfg.include, args.mask_error_details)
-    get_manager(mcp, cfg)
+    get_manager(mcp, cfg, system_type=args.system_type)
 
     # Create ASGI app from MCP server
     mcp_app = mcp.http_app(path=cfg.server.path)
     app = FastAPI(title="MCP Server", lifespan=mcp_app.lifespan)
+
+    # Setup Hub (parent role)
+    if args.hub:
+        mcp.hub_manager = HubManager.from_args(mcp, args)
+
+    # Setup Worker (child role) - triggered by --join. We reqiure join secret.
+    if args.join:
+        if not args.join_secret:
+            logger.exit("A --join-secret is required to register with a hub.")
+        mcp.worker_manager = WorkerManager.from_args(mcp, args, cfg)
+    mcp_app = mcp.http_app(path=cfg.server.path)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        # startup logic for Worker registration
+        if hasattr(mcp, "worker_manager"):
+            asyncio.create_task(mcp.worker_manager.run_registration())
+
+        # Execute FastMCP's internal lifespan context
+        async with mcp_app.router.lifespan_context(app):
+            yield
+
+    app = FastAPI(title="MCP Server", lifespan=lifespan)
+
+    # Bind the /register endpoint if we are a Hub
+    if args.hub:
+        mcp.hub_manager.bind_to_app(app)
 
     # Mount the MCP server. Note from V: we can use mount with antother FastMCP
     # mcp.run can also be replaced with mcp.run_async

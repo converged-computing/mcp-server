@@ -11,6 +11,9 @@ from fastmcp.resources import Resource
 # These are the function types we want to discover
 from fastmcp.tools import Tool
 
+import mcpserver.defaults as defaults
+import mcpserver.tools.system as systems
+
 from .base import BaseTool
 
 
@@ -18,6 +21,9 @@ class ToolManager:
 
     def __init__(self):
         self.tools = {}
+
+        # Active instances that can deliver metadata about status
+        self.instances = {}
 
     def load_function(self, tool_path):
         """
@@ -101,10 +107,21 @@ class ToolManager:
             discovered[tool_id] = {"path": file_path, "module": import_path, "root": root_path}
         return discovered
 
-    def load_tools(self, mcp, include=None, exclude=None):
+    def load_tools(self, mcp, include=None, exclude=None, system_type="generic"):
         """
         Load a set of named tools, or default to all those discovered.
         """
+        if system_type in systems.system_tools:
+            # Map short name to internal library path
+            sys_module = f"mcpserver.tools.system.{system_type}"
+        else:
+            # Assume it is a custom external module path provided by the user
+            # e.g., 'my_custom_package.system_logic'
+            sys_module = system_type
+
+        # Seed the system tool into discovery
+        self.tools["system"] = {"module": sys_module}
+
         # If no tools are selected... select all tools discovered
         names = self.tools
         include = "(%s)" % "|".join(include) if include else None
@@ -131,6 +148,7 @@ class ToolManager:
             instance = self.load_tool(name)
             if not instance:
                 continue
+            self.instances[name] = instance
 
             # Add tools, resources, and prompts on the fly
             for ToolClass in [Tool, Resource, Prompt]:
@@ -174,11 +192,9 @@ class ToolManager:
             for _, obj in inspect.getmembers(module):
                 if inspect.isclass(obj) and issubclass(obj, BaseTool) and obj is not BaseTool:
 
-                    # Instantiate
                     instance = obj()
-                    # Inject the filesystem-derived name
                     instance.name = tool_id
-                    instance.setup()
+                    instance.setup(manager=self)
                     return instance
 
         except ImportError as e:
@@ -193,13 +209,13 @@ class ToolManager:
         """
         prompts = set()
 
-        # 2. Load them (to execute decorators)
+        # Load them (to execute decorators)
         for tool_id, path in self.tools.items():
             mod = self.load_tool_module(tool_id, path)
             if not mod:
                 continue
 
-            # 3. Inspect the classes/functions in the module
+            # Inspect the classes/functions in the module
             for name, obj in inspect.getmembers(mod):
                 # We usually look for classes inheriting from BaseTool
                 # But we can also just scan the class attributes
