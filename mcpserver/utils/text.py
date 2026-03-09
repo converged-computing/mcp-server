@@ -10,6 +10,10 @@ def sanitize(name: str) -> str:
     return clean
 
 
+def format_rules(rules):
+    return "\n".join([f"- {r}" for r in rules])
+
+
 def get_code_block(content, code_type=None):
     """
     Parse a code block from the response

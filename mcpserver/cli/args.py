@@ -80,3 +80,14 @@ def populate_start_args(start):
         "--public-url",
         help="The URL the Hub should use to reach this worker (e.g. http://ip:port/mcp)",
     )
+    worker_group.add_argument(
+        "--worker-type",
+        default="generic",
+        help="Category of worker (e.g., 'flux', 'kubernetes', 'storage')",
+    )
+    worker_group.add_argument(
+        "--label",
+        action="append",
+        dest="labels",
+        help="Custom labels in key=value format (e.g., --label gpu=h100). Can be used multiple times.",
+    )

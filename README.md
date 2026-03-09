@@ -256,10 +256,29 @@ The mcp-server can register worker hubs, which are other MCP servers that regist
 
 ```bash
 # Start a hub in one terminal
-mcpserver start --hub
+mcpserver start --hub --hub-secret potato
 ```
 
+In another terminal, start a worker using the token that is generated. Add some functions for fun.
 
+```bash
+mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --join-secret portato --port 7777
+```
+
+Test doing queries for status:
+
+```bash
+# Get listing of workers and metadata
+python3 ./examples/mcp-query.py
+
+# Get a specific tool metadata from the worker
+python3 ./examples/mcp-query.py http://localhost:7777/mcp get_status
+
+# Call a namespaced tool on the hub (e.g., get the status)
+python3 ./examples/mcp-query.py http://localhost:8000/mcp n_781e903e4f10_get_status
+```
+
+You can test it without the join secret, or a wrong join secret, to see it fail.
 
 ### Design Choices
 
@@ -274,7 +293,10 @@ Here are a few design choices (subject to change, of course). I am starting with
 
 ## TODO
 
-- Full operator with Flux example (Flux operator with HPC apps and jobspec translation)
+- [ ] join secret should be allowed from environment
+- [ ] debug why port not taking
+- [ ] design --system-name and --system
+- [ ] Need to handle worker disconnect and reconnect.
 
 ## License
 
