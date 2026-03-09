@@ -19,6 +19,9 @@ class ToolManager:
     def __init__(self):
         self.tools = {}
 
+        # Active instances that can deliver metadata about status
+        self.instances = {}
+
     def load_function(self, tool_path):
         """
         Assume this is the function name provided
@@ -101,10 +104,14 @@ class ToolManager:
             discovered[tool_id] = {"path": file_path, "module": import_path, "root": root_path}
         return discovered
 
-    def load_tools(self, mcp, include=None, exclude=None):
+    def load_tools(self, mcp, include=None, exclude=None, status_tool: str = None):
         """
         Load a set of named tools, or default to all those discovered.
         """
+        # Start with the system status tool
+        status_tool = status_tool or "mcpserver.tools.system.tool"
+        self.tools["system"] = {"module": status_tool}
+
         # If no tools are selected... select all tools discovered
         names = self.tools
         include = "(%s)" % "|".join(include) if include else None
@@ -131,6 +138,7 @@ class ToolManager:
             instance = self.load_tool(name)
             if not instance:
                 continue
+            self.instances[name] = instance
 
             # Add tools, resources, and prompts on the fly
             for ToolClass in [Tool, Resource, Prompt]:
@@ -174,11 +182,9 @@ class ToolManager:
             for _, obj in inspect.getmembers(module):
                 if inspect.isclass(obj) and issubclass(obj, BaseTool) and obj is not BaseTool:
 
-                    # Instantiate
                     instance = obj()
-                    # Inject the filesystem-derived name
                     instance.name = tool_id
-                    instance.setup()
+                    instance.setup(manager=self)
                     return instance
 
         except ImportError as e:

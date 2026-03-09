@@ -29,7 +29,7 @@ def main(args, extra, **kwargs):
     """
     if args.config is not None:
         print(f"📖 Loading config from {args.config}")
-        cfg = MCPConfig.from_yaml(args.config)
+        cfg = MCPConfig.from_yaml(args.config, args)
     else:
         cfg = MCPConfig.from_args(args)
 
@@ -43,37 +43,22 @@ def main(args, extra, **kwargs):
 
     # Setup Hub (parent role)
     if args.hub:
-        mcp.hub_manager = HubManager(
-            mcp, host=cfg.server.host, port=cfg.server.port, secret=args.hub_secret
-        )
+        mcp.hub_manager = HubManager.from_args(mcp, args)
 
-    # Setup Worker (child role) - triggered by --join
+    # Setup Worker (child role) - triggered by --join. We reqiure join secret.
     if args.join:
-
-        # Require a join secret
         if not args.join_secret:
             logger.exit("A --join-secret is required to register with a hub.")
-        public_url = (
-            args.public_url or f"http://{cfg.server.host}:{cfg.server.port}{cfg.server.path}"
-        )
-        mcp.worker_manager = WorkerManager(
-            mcp,
-            hub_url=args.join,
-            secret=args.join_secret,
-            worker_id=args.register_id,
-            public_url=public_url,
-        )
-
+        mcp.worker_manager = WorkerManager.from_args(mcp, args, cfg)
     mcp_app = mcp.http_app(path=cfg.server.path)
 
-    # 3. Modern Chained Lifespan Fix
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        # Startup: Logic for Worker registration
+        # startup logic for Worker registration
         if hasattr(mcp, "worker_manager"):
             asyncio.create_task(mcp.worker_manager.run_registration())
 
-        # Chain: Execute FastMCP's internal lifespan context
+        # Execute FastMCP's internal lifespan context
         async with mcp_app.router.lifespan_context(app):
             yield
 

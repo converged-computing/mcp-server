@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields, replace
 from typing import Any, Dict, List, Optional
 
 import yaml
@@ -54,18 +54,27 @@ class MCPConfig:
     resources: List[Capability] = field(default_factory=list)
 
     @classmethod
-    def from_yaml(cls, path: str):
+    def from_yaml(cls, path: str, args=None):
+        args = args or {}
         with open(path, "r") as f:
             data = yaml.safe_load(f) or {}
 
-        return cls.from_dict(data)
+        return cls.from_dict(data, vars(args))
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]):
-        """Helper to recursively build dataclasses from a dictionary."""
+    def from_dict(cls, data: Dict[str, Any], args=None):
+        """
+        Helper to recursively build dataclasses from a dictionary.
+        """
+        args = args or {}
         # Build ServerConfig
         server_data = data.get("server", {})
         server_cfg = ServerConfig(**server_data)
+
+        # Command line takes precedence
+        field_names = {field.name for field in fields(ServerConfig)}
+        filtered_args = {k: v for k, v in args.items() if k in field_names}
+        server_cfg = replace(server_cfg, **filtered_args)
 
         # Build Settings (Flattened in the dataclass)
         settings = data.get("settings", {})

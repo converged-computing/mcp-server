@@ -9,8 +9,15 @@ class BaseTool(ABC):
     Each tool can provision prompts, resources, or tools.
     """
 
-    def setup(self):
-        pass
+    def setup(self, manager=None):
+        self.manager = manager
+
+    def get_status(self) -> dict:
+        """
+        Optional: Override this to provide custom status
+        information for this specific tool set.
+        """
+        return {}
 
     def get_mcp_tools(self) -> List[Callable]:
         return self.get_mcp_methods("_is_mcp_tool")
