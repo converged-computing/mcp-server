@@ -42,13 +42,16 @@ class WorkerManager:
         public_url = (
             args.public_url or f"http://{cfg.server.host}:{cfg.server.port}{cfg.server.path}"
         )
+
+        sys_type = getattr(args, "system_type", "generic")
+        worker_type = sys_type.split(".")[-1] if "." in sys_type else sys_type
         return cls(
             mcp,
             hub_url=args.join,
             secret=args.join_secret,
             worker_id=args.register_id,
             public_url=public_url,
-            worker_type=args.worker_type,
+            worker_type=worker_type,
             labels=args.labels,
         )
 

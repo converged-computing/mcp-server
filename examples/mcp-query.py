@@ -11,7 +11,6 @@ from rich.table import Table
 
 console = Console()
 
-# --- Defaults ---
 DEFAULT_URL = "http://localhost:8000/mcp"
 DEFAULT_TOOL = "get_fleet_status"
 
@@ -76,7 +75,7 @@ async def query_mcp(url, tool_name):
                 except:
                     data = text_content
 
-            # --- PRETTY RENDERING ---
+            # MAKE IT PRETTY.
             if tool_name == "get_fleet_status" and isinstance(data, dict):
                 console.print("\n")
                 console.print(Panel(render_fleet_tree(data), border_style="cyan", expand=False))

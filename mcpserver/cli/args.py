@@ -64,13 +64,22 @@ def populate_start_args(start):
         default=os.environ.get("MCP_HUB_SECRET"),
         help="Secret key required for workers to register. (Auto-generated if omitted)",
     )
+    start.add_argument(
+        "--system-type",
+        default="generic",
+        help="System type/template (e.g., 'generic', 'flux', 'kubernetes') or a full python module path.",
+    )
 
     # Worker Registration Group
     worker_group = start.add_argument_group("🐝 Worker Registration")
     worker_group.add_argument(
         "--join", help="URL of the MCP Hub to join (e.g., http://hub-host:8089)"
     )
-    worker_group.add_argument("--join-secret", help="The registration secret provided by the Hub.")
+    worker_group.add_argument(
+        "--join-secret",
+        help="The registration secret provided by the Hub.",
+        default=os.environ.get("MCPSERVER_JOIN_SECRET"),
+    )
     worker_group.add_argument(
         "--register-id",
         help="Unique ID for this worker. Defaults to the hostname.",
