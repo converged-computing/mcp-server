@@ -64,11 +64,6 @@ def populate_start_args(start):
         default=os.environ.get("MCP_HUB_SECRET"),
         help="Secret key required for workers to register. (Auto-generated if omitted)",
     )
-    start.add_argument(
-        "--system-type",
-        default="generic",
-        help="System type/template (e.g., 'generic', 'flux', 'kubernetes') or a full python module path.",
-    )
 
     # Worker Registration Group
     worker_group = start.add_argument_group("🐝 Worker Registration")
@@ -90,13 +85,23 @@ def populate_start_args(start):
         help="The URL the Hub should use to reach this worker (e.g. http://ip:port/mcp)",
     )
     worker_group.add_argument(
-        "--worker-type",
-        default="generic",
-        help="Category of worker (e.g., 'flux', 'kubernetes', 'storage')",
-    )
-    worker_group.add_argument(
         "--label",
         action="append",
         dest="labels",
         help="Custom labels in key=value format (e.g., --label gpu=h100). Can be used multiple times.",
+    )
+
+    # Agent Reasoning Group
+    agent_group = start.add_argument_group("🧠 Agent Reasoning")
+    agent_group.add_argument(
+        "--llm-backend",
+        help="LLM provider (gemini, openai). Env: RESOURCE_SECRETARY_LLM",
+    )
+    agent_group.add_argument(
+        "--llm-model",
+        help="Specific model name. Env: RESOURCE_SECRETARY_MODEL",
+    )
+    agent_group.add_argument(
+        "--llm-api-base",
+        help="Base URL for the API (OpenAI/Local only). Env: RESOURCE_SECRETARY_API_BASE",
     )

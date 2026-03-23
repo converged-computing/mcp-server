@@ -24,6 +24,7 @@ INSTALL_REQUIRES = (
     ("textual", {"min_version": None}),
 )
 
+HUB_REQUIRES = (("resource-secretary", {"min_version": None}),)
 TESTS_REQUIRES = (("pytest", {"min_version": "4.6.2"}),)
 
-INSTALL_REQUIRES_ALL = INSTALL_REQUIRES + TESTS_REQUIRES
+INSTALL_REQUIRES_ALL = INSTALL_REQUIRES + TESTS_REQUIRES + HUB_REQUIRES

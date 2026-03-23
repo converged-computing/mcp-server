@@ -35,7 +35,7 @@ def main(args, extra, **kwargs):
 
     # Get the tool manager and register discovered tools
     mcp = init_mcp(cfg.exclude, cfg.include, args.mask_error_details)
-    get_manager(mcp, cfg, system_type=args.system_type)
+    get_manager(mcp, cfg, args.register_id)
 
     # Create ASGI app from MCP server
     mcp_app = mcp.http_app(path=cfg.server.path)
