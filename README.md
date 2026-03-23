@@ -252,6 +252,12 @@ And you'll see the server get hit.
 
 ### Starting a Hub
 
+You'll need to install support for the associated worker and resource discovery:
+
+```bash
+pip install mcp-serve[hub]
+```
+
 The mcp-server can register worker hubs, which are other MCP servers that register to it. To start the mcpserver as a hub:
 
 ```bash
@@ -275,7 +281,7 @@ mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8
 Register the worker sytem type instead as flux:
 
 ```bash
-mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --port 7777 --system-type flux
+mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --port 7777 --system-type flux --join-secret potato
 ```
 
 Test doing queries for status:
@@ -293,6 +299,31 @@ python3 ./examples/mcp-query.py http://localhost:8000/mcp n_781e903e4f10_get_sta
 
 You can test it without the join secret, or a wrong join secret, to see it fail.
 
+#### Negotiating a Job
+
+When a user has a request, it goes to the hub as a prompt. We use a prompt instead of a set of hard coded policies, because it can technically say anything. E.g.,
+
+> I have a paper due in 3 hours and I need to run LAMMPS. Find me at least 3 nodes and minimize time to completion. My budget is X.
+
+For this to work we:
+
+1. Make a call to the mcp server hub to `negotiate_work`
+ - Negotiate work is going to prompt the secretary to send back a response with:
+   - a quick yes/no response that can eliminate contenders
+   - policy specific metrics (e.g., estimated time to start, estimated cost, performance)
+   - Importantly, the hub will evaluate the importance of a set of factors for the job. E.g., "this job requires good network, completed in X time, under N cost, storage does not matter." It will come up with factors and weights (importance) and an equation for the factors and not tell the secretaries its relative weights. The hub wil prepare a prompt that describes the needs, not only the importance, but provide reference for the secretary agents. E.g., "Evaluate your network where 1.0 is 100Gbps InfiniBand and 0.0 is 1Gbps Ethernet." The secretaries will then evaluate the quality of their resources toward the goal, and send back scores and reasons/justification to evaluate each variable. We can test binary (0/1), requesting specific ranges, and normalized scores (0 to 1). The hub then just needs to evaluate the returned values against its equation. This needs to be a two step process, first quantiative, and then adjustment based on qualitative. E.g., maybe a specific filesystem is given 0.5, but the secretary also notes it is undergoing a rebuild, so the hub decides to penalize it.
+2. The hub sends the request to the children workers (each a different cluster)
+3. Each child worker has a secretary that receives it.
+ - The secretary has metadata about the cluster that is discovered on startup that does not change (e.g., hardware)
+ - The secretary also is able to register handles to detailed discovery tools (e.g., software, you'd do for example, `spack find lammps`)
+ - The secretary makes a call to request state data like queue status
+ - The secretary also uses the discovery tools to look for the software of choice.
+4. Each secretary sends back their response - quantitative scores, plus qualitative reasons.
+5. Each secretary has a trust score. It is based on two things:
+ - The actual discovery of resources is a known truth that is always returned. What the secretary says is compared against that.
+ - An actual performance of a job can be evaluated against what was promised.
+ - A trust score can (somehow) go into a future evaluation.
+
 ### Design Choices
 
 Here are a few design choices (subject to change, of course). I am starting with re-implementing our fractale agents with this framework. For that, instead of agents being tied to specific functions (as classes on their agent functions) we will have a flexible agent class that changes function based on a chosen prompt. It will use mcp functions, prompts, and resources. In addition:
@@ -309,6 +340,11 @@ Here are a few design choices (subject to change, of course). I am starting with
 - [ ] need to expose tools from system (child worker) instances
 - [ ] need to decide on dispatch strategy / algorithm
 - [ ] add in fluxion queue stats via RPC call to flux status
+
+Idea:
+
+- the mcp-server worker should have a tool that generates a prompt for an agent. "Here is a request for lammps, this many nodes, and here are the resources we see (call to get_status, which also will be returned to the caller). Can we support it? Use your tools to figure it out. then the created agent should use the tools in the same server it is generated in to answer that question. The response from the agent plus the status should return to the hub. The hub can have the weighted equation to decide on a final cluster.
+- TODO: ask agent which flux variables we should eliminate.
 
 ## License
 

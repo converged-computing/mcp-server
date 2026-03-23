@@ -1,45 +1,46 @@
 from mcpserver.core.config import MCPConfig
 from mcpserver.tools.manager import ToolManager
 
-# Discover and register defaults
+# Initialize the global ToolManager instance
 manager = ToolManager()
-manager.register()
 
 
-def get_manager(mcp, cfg, system_type=None):
+def get_manager(mcp, cfg: MCPConfig, register_id: str):
     """
-    Get the common tool manager and register tools.
+    Initializes the ToolManager and registers all configured tools and system identity.
+
+    Inputs:
+        mcp (FastMCP): The MCP server instance.
+        cfg (MCPConfig): The loaded server configuration.
+        system_type (str): Optional legacy system type identifier.
     """
-    # Add additional module paths (custom out of tree modules)
-    for path in cfg.discovery:
-        print(f"🧐 Registering additional module: {path}")
-        manager.register(path)
 
-    # explicit egistration
-    for endpoint in register(mcp, cfg):
-        print(f"   ✅ Registered: {endpoint.name}")
+    # 1. Load the Federated Fleet Tools
+    # This automatically boots the SystemTool and any discovery modules
+    print(f"📡 Initializing System Identity...")
+    manager.load_fleet_tools(mcp, include=cfg.discovery, worker_id=register_id)
 
-    # Load into the manager (tools, resources, prompts)
-    # We pass the system_name and system path here
-    for tool in manager.load_tools(
-        mcp,
-        cfg.include,
-        cfg.exclude,
-        system_type=system_type,
-    ):
-        print(f"   ✅ Registered: {tool.name}")
+    # 2. Handle explicit registration of specific paths (Tools, Prompts, Resources)
+    for endpoint in register_explicit_capabilities(mcp, cfg):
+        print(f"   ✅ Registered Explicit: {endpoint.name}")
 
-    # Visual to show user we have ssl
+    # 3. Handle SSL Visualization
     if cfg.server.ssl_keyfile is not None and cfg.server.ssl_certfile is not None:
         print(f"   🔐 SSL Enabled")
 
+    return manager
 
-def register(mcp, cfg: MCPConfig):
+
+def register_explicit_capabilities(mcp, cfg: MCPConfig):
     """
-    Registers specific tools, prompts, and resources defined in the config.
-    Replaces the previous args-based register function.
+    Registers specific tools, prompts, and resources defined explicitly in the config.
+
+    Inputs:
+        mcp (FastMCP): The MCP server instance.
+        cfg (MCPConfig): The loaded configuration object.
     """
-    # Define which config lists map to which manager methods
+    # Map configuration lists to the manager's registration methods
+    # Note: These methods must be present in your ToolManager implementation
     registries = [
         (cfg.tools, manager.register_tool),
         (cfg.prompts, manager.register_prompt),
