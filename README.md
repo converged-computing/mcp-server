@@ -278,12 +278,6 @@ export MCPSERVER_JOIN_SECRET=potato
 mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --port 7777
 ```
 
-Register the worker sytem type instead as flux:
-
-```bash
-mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --port 7777 --system-type flux --join-secret potato
-```
-
 Test doing queries for status:
 
 ```bash
@@ -304,6 +298,22 @@ You can test it without the join secret, or a wrong join secret, to see it fail.
 When a user has a request, it goes to the hub as a prompt. We use a prompt instead of a set of hard coded policies, because it can technically say anything. E.g.,
 
 > I have a paper due in 3 hours and I need to run LAMMPS. Find me at least 3 nodes and minimize time to completion. My budget is X.
+
+If you are using gemini or openai, make sure to install the libraries.
+
+```bash
+pip install -e .[gemini] --break-system-packages
+pip install -e .[openai] --break-system-packages
+```
+
+Since we are running in a VSCode environment, let's asked a smaller scoped task.
+
+```bash
+python3 examples/negotiate/1-negotiate-job.py "I need to run LAMMPS with 1 node. Do we have a build with KOKKOS and MPI"
+```
+
+The above is working, and the response comes back! Next I need to work on the selection algorithm and delegation.
+Likely to start I'll randomly select (that will be an interface that is valid to choose) and then allow me to implement delegation. The remainder of notes are from before.
 
 For this to work we:
 
@@ -337,9 +347,9 @@ Here are a few design choices (subject to change, of course). I am starting with
 
 ## TODO
 
-- [ ] need to expose tools from system (child worker) instances
-- [ ] need to decide on dispatch strategy / algorithm
-- [ ] add in fluxion queue stats via RPC call to flux status
+- [ ] need way to "pass forward" an error from a worker that, for example, API key not set.
+- [ ] I want to have the equivalent of a satisfy endpoint, checking for the negotiate but not dispatch.
+- [ ] I also want an equivalent "just submit to this cluster" endpoint.
 
 Idea:
 

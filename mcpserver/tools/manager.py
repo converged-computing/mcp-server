@@ -13,26 +13,13 @@ from .system.system import SystemTool
 class ToolManager:
     """
     Top-level manager for tool registration.
-    Prevents duplicate registration and handles worker identity prefixing.
+    Worker tools are registered with clean names; Hub handles namespacing.
     """
 
     def __init__(self):
         self.tools: Dict[str, Dict[str, Any]] = {}
         self.instances: Dict[str, BaseTool] = {}
-        # Track registered names to prevent FastMCP duplicate errors
-        self.registered_names: Set[str] = set()
-        self.worker_id: Optional[str] = None
-
-    def get_prefixed_name(self, name: str) -> str:
-        """
-        Applies the worker identity prefix to a tool name if configured.
-        """
-        if not self.worker_id:
-            return name
-        # Prevent double-prefixing if the name already starts with the ID
-        if name.startswith(f"{self.worker_id}_"):
-            return name
-        return f"{self.worker_id}_{name}"
+        self.registered_keys: Set[str] = set()
 
     def register_instance_with_mcp(self, mcp, instance: BaseTool):
         """
@@ -49,49 +36,43 @@ class ToolManager:
                 continue
 
             for func in getter():
-                # Apply the worker identity prefix here
-                base_name = getattr(func, "_mcp_name", func.__name__)
-                prefixed_name = self.get_prefixed_name(base_name)
+                name = getattr(func, "_mcp_name", func.__name__)
 
-                # Check for duplicate registration
-                unique_key = f"{type_prefix}:{prefixed_name}"
-                if unique_key in self.registered_names:
+                # Check for duplicate registration within this process
+                unique_key = f"{type_prefix}:{name}"
+                if unique_key in self.registered_keys:
                     continue
 
-                endpoint = ToolClass.from_function(func, name=prefixed_name)
+                endpoint = ToolClass.from_function(func, name=name)
                 try:
                     add_func(endpoint)
-                    self.registered_names.add(unique_key)
+                    self.registered_keys.add(unique_key)
                 except Exception as e:
                     print(f"⚠️  Failed to register {unique_key}: {e}")
 
-    def load_fleet_tools(self, mcp, include: Optional[List[str]] = None, worker_id: str = None):
+    def load_fleet_tools(self, mcp, include: Optional[List[str]] = None):
         """
         The standard loader for an agentic worker.
         """
-        self.worker_id = worker_id
-
-        # 1. Initialize and register the local SystemTool
+        # Initialize and register the local SystemTool
         system = SystemTool()
         system.name = "system"
         system.setup(manager=self)
         self.instances["system"] = system
         self.register_instance_with_mcp(mcp, system)
 
-        # 2. Boot optional user-defined tool modules
+        # Optional user-defined tool modules (maybe we don't need)
         if not include:
             return
 
         for path in include:
-            # SHARP FIX: If the discovery path is the system module, skip it.
-            # We already loaded it above manually.
             if "mcpserver.tools.system" in path:
                 continue
             self.load_and_register_module(mcp, path)
 
     def load_and_register_module(self, mcp, module_path: str):
         """
-        Loads a module by path and registers any BaseTool subclasses.
+        Load and register a module.
         """
         try:
             module = importlib.import_module(module_path)
@@ -110,48 +91,58 @@ class ToolManager:
             print(f"❌ Could not load extra tool module at {module_path}: {e}")
 
     def load_function(self, tool_path: str):
+        """
+        Load a function. Worst docstring ever. I'm tired.
+        """
         module_path, function_name = tool_path.rsplit(".", 1)
         module = importlib.import_module(module_path)
         return getattr(module, function_name)
 
     def register_tool(self, mcp, tool_path: str, name: str = None):
+        """
+        Register a tool.
+        """
         from fastmcp.tools import Tool
 
         func = self.load_function(tool_path)
-        actual_name = self.get_prefixed_name(name or func.__name__)
-
-        if f"tool:{actual_name}" in self.registered_names:
+        actual_name = name or func.__name__
+        if f"tool:{actual_name}" in self.registered_keys:
             return
-
         endpoint = Tool.from_function(func, name=actual_name)
         mcp.add_tool(endpoint)
-        self.registered_names.add(f"tool:{actual_name}")
+        self.registered_keys.add(f"tool:{actual_name}")
         return endpoint
 
     def register_resource(self, mcp, tool_path: str, name: str = None):
+        """
+        Register a resource.
+
+        Note from vsoch: I haven't tried any resources yet.
+        """
         from fastmcp.resources import Resource
 
         func = self.load_function(tool_path)
-        actual_name = self.get_prefixed_name(name or func.__name__)
-
-        if f"resource:{actual_name}" in self.registered_names:
+        actual_name = name or func.__name__
+        if f"resource:{actual_name}" in self.registered_keys:
             return
-
         endpoint = Resource.from_function(func, name=actual_name)
         mcp.add_resource(endpoint)
-        self.registered_names.add(f"resource:{actual_name}")
+        self.registered_keys.add(f"resource:{actual_name}")
         return endpoint
 
     def register_prompt(self, mcp, tool_path: str, name: str = None):
+        """
+        Register a prompt.
+
+        Note from vsoch: In practice, I'm not sure I find server prompts useful.
+        """
         from fastmcp.prompts import Prompt
 
         func = self.load_function(tool_path)
-        actual_name = self.get_prefixed_name(name or func.__name__)
-
-        if f"prompt:{actual_name}" in self.registered_names:
+        actual_name = name or func.__name__
+        if f"prompt:{actual_name}" in self.registered_keys:
             return
-
         endpoint = Prompt.from_function(func, name=actual_name)
         mcp.add_prompt(endpoint)
-        self.registered_names.add(f"prompt:{actual_name}")
+        self.registered_keys.add(f"prompt:{actual_name}")
         return endpoint

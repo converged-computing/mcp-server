@@ -35,7 +35,7 @@ class HubManager:
     @classmethod
     def from_args(cls, mcp, args) -> Optional["HubManager"]:
         """
-        Factory to create a HubManager from CLI arguments.
+        Create a HubManager from CLI arguments.
         """
         if not getattr(args, "hub", False):
             return None
@@ -77,7 +77,7 @@ class HubManager:
     async def broadcast_negotiation(self, prompt: str) -> dict:
         """
         Parallelized broadcast using asyncio.gather.
-        Each worker is evaluated independently and concurrently.
+        Each worker is evaluated independently and concurrently!
         """
 
         async def negotiate_with_worker(wid, info):
@@ -91,15 +91,23 @@ class HubManager:
                         # Invoke the Agentic Secretary on the child cluster
                         mcp_result = await sess.call_tool("ask_secretary", {"request": prompt})
                         raw_text = mcp_result.content[0].text
+                        print(type(raw_text))
+
                         try:
                             # Handle potential quote issues in LLM-generated JSON
-                            proposal_data = json.loads(raw_text.replace("'", '"'))
+                            proposal_data = json.loads(utils.extract_code_block(raw_text))
                         except:
                             proposal_data = {"proposal_text": raw_text}
 
-                        return wid, {"type": "agentic_proposal", "data": proposal_data}
+                        status = self.get_negotiation_status(raw_text)
+                        return wid, {
+                            "type": "agentic_proposal",
+                            "data": proposal_data,
+                            "status": status,
+                        }
+
                     else:
-                        # Fallback to Level 1 static status
+                        # Fallback to get status.
                         mcp_result = await sess.call_tool("get_status", {})
                         raw_text = mcp_result.content[0].text
                         return wid, {
@@ -111,17 +119,33 @@ class HubManager:
                 return wid, {"type": "error", "message": str(e)}
 
         start_time = time.time()
+
         # Parallel execution of all worker negotiations
         results = await asyncio.gather(
             *[negotiate_with_worker(w, i) for w, i in self.workers.items()]
         )
 
+        # NOTE from vsoch: this is just for debugging
+        print(results)
         return {
             "negotiation_id": secrets.token_hex(4),
             "timestamp": start_time,
             "user_prompt": prompt,
             "proposals": dict(results),
         }
+
+    def get_negotiation_status(self, text):
+        """
+        This is a simple function to derive a final status.
+
+        We require the secreturn to return one of READY, BUSY, INCOMPATIBLE.
+        Instead of trying to parse more json, let's try this simple approach.
+        """
+        for status in ["READY", "BUSY", "INCOMPATIBLE"]:
+            if status in text:
+                return status
+        # If we get here we need to refine this approach.
+        return "UNKNOWN"
 
     async def fetch_all_statuses(self) -> dict:
         """
@@ -186,7 +210,7 @@ class HubManager:
         try:
             async with Client(url) as client:
                 tools = await client.list_tools()
-                print()  # Discovery block spacing
+                print()
                 for tool in tools:
                     self._create_proxy(worker_id, tool)
         except Exception as e:

@@ -26,5 +26,9 @@ INSTALL_REQUIRES = (
 
 HUB_REQUIRES = (("resource-secretary", {"min_version": None}),)
 TESTS_REQUIRES = (("pytest", {"min_version": "4.6.2"}),)
+OPENAI_REQUIRES = (("openai", {"min_version": None}),)
+GOOGLE_REQUIRES = (("google-genai", {"min_version": None}),)
 
-INSTALL_REQUIRES_ALL = INSTALL_REQUIRES + TESTS_REQUIRES + HUB_REQUIRES
+INSTALL_REQUIRES_ALL = (
+    INSTALL_REQUIRES + TESTS_REQUIRES + HUB_REQUIRES + OPENAI_REQUIRES + GOOGLE_REQUIRES
+)

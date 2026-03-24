@@ -14,6 +14,20 @@ def format_rules(rules):
     return "\n".join([f"- {r}" for r in rules])
 
 
+def extract_code_block(text):
+    """
+    Match block of code, assuming llm returns as markdown or code block.
+
+    This is (I think) a better variant.
+    """
+    match = re.search(r"```(?:\w+)?\s*\n(.*?)\n\s*```", text, re.DOTALL)
+    # Extract content from ```json ... ``` blocks if present
+    if match:
+        return match.group(1).strip()
+    # Fall back to returning stripped text
+    return text.strip()
+
+
 def get_code_block(content, code_type=None):
     """
     Parse a code block from the response

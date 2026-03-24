@@ -35,11 +35,9 @@ class SystemTool(BaseTool):
             manifest[category] = {inst.name: inst.metadata for inst in instances}
         return manifest
 
-    @mcp.tool(name="get_status")
     def get_status(self) -> Dict[str, Any]:
         return {"timestamp": time.time(), "manifest": self.build_manifest()}
 
-    @mcp.tool(name="ask_secretary")
     async def ask_secretary(self, request: str) -> Dict[str, Any]:
         """
         Wakes up the local Secretary Agent using the configured backend.
