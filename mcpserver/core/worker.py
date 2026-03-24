@@ -1,5 +1,4 @@
 import asyncio
-import json
 import socket
 import time
 from typing import Any, Dict, Optional
@@ -31,24 +30,23 @@ class WorkerManager:
         self.worker_id = worker_id or socket.gethostname()
         self.public_url = public_url
 
-        # 1. Level 1 Discovery: Probe the local system on startup
+        # Probe the local system on startup. E.g., "we found spack, flux, etc."
         logger.info("📡 Probing local system for resource providers...")
         self.catalog = discover_providers()
 
-        # 2. Build the Static Manifest for the Hub
+        # Static Manifest for the worker
         self.manifest = self.build_manifest()
 
-        # 3. Handle Labels (Merge user-defined with discovered site labels)
+        # Note from vsoch: not sure if this will be useful / what we should use for.
         self.labels = self.parse_labels(labels)
         self.integrate_site_metadata()
 
-        # 4. Register the MCP Tools automatically
+        # Register MCP Tools automatically
         self.register_agent_tools()
 
     def build_manifest(self) -> Dict[str, Any]:
         """
         Flattens the discovered provider objects into a static JSON manifest.
-        This is the 'Business Card' sent to the Hub.
         """
         manifest = {}
         for category, instances in self.catalog.items():
@@ -57,7 +55,7 @@ class WorkerManager:
 
     def integrate_site_metadata(self):
         """
-        Looks for the 'site' provider in the catalog and adds its metadata to labels.
+        Looks for the site provider in the catalog and adds its metadata to labels.
         """
         site_instances = self.catalog.get("system", [])
         for inst in site_instances:
@@ -100,9 +98,7 @@ class WorkerManager:
             Wakes up the local Secretary Agent to perform a Level 2 investigation.
             Use this to ask about specific software availability, queue depth, or node health.
             """
-            # We will implement the SecretaryAgent class in the next step.
-            # It will take self.catalog (the active provider instances) as input.
-            from resource_secretary.secretary import SecretaryAgent
+            from resource_secretary.agents.secretary import SecretaryAgent
 
             # Flatten the catalog into a list of active provider instances
             active_providers = [inst for category in self.catalog.values() for inst in category]
@@ -124,6 +120,7 @@ class WorkerManager:
                 "url": self.public_url,
                 "labels": self.labels,
                 # Identify the worker by its primary workload manager if available
+                # Note from vsoch: after refactor all workers are generic, so site needs to apply this.
                 "type": self.labels.get("manager", "generic"),
                 "manifest": self.manifest,
             }

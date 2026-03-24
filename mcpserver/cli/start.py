@@ -1,4 +1,5 @@
 import asyncio
+import os
 import warnings
 from contextlib import asynccontextmanager
 
@@ -22,6 +23,24 @@ from mcpserver.logger import logger
 from mcpserver.routes import *
 
 
+def broadcast_llm(args):
+    """
+    Broadcast LLM config via the environment.
+
+    I think this is an OK way to do it.
+    """
+    # 1. Inject Agent parameters into the environment
+    # These map the CLI flags we defined in populate_start_args to the library env vars
+    if args.llm_backend:
+        os.environ["RESOURCE_SECRETARY_LLM"] = args.llm_backend
+
+    if args.llm_model:
+        os.environ["RESOURCE_SECRETARY_MODEL"] = args.llm_model
+
+    if args.llm_api_base:
+        os.environ["RESOURCE_SECRETARY_API_BASE"] = args.llm_api_base
+
+
 def main(args, extra, **kwargs):
     """
     Starts the MCP Gateway with the specified tools.
@@ -33,9 +52,12 @@ def main(args, extra, **kwargs):
     else:
         cfg = MCPConfig.from_args(args)
 
+    # Export LLM envars
+    broadcast_llm(args)
+
     # Get the tool manager and register discovered tools
     mcp = init_mcp(cfg.exclude, cfg.include, args.mask_error_details)
-    get_manager(mcp, cfg, args.register_id)
+    get_manager(mcp, cfg)
 
     # Create ASGI app from MCP server
     mcp_app = mcp.http_app(path=cfg.server.path)
@@ -45,7 +67,7 @@ def main(args, extra, **kwargs):
     if args.hub:
         mcp.hub_manager = HubManager.from_args(mcp, args)
 
-    # Setup Worker (child role) - triggered by --join. We reqiure join secret.
+    # Setup Worker (child role) - triggered by --join. We require join secret.
     if args.join:
         if not args.join_secret:
             logger.exit("A --join-secret is required to register with a hub.")

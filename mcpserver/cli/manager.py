@@ -5,7 +5,7 @@ from mcpserver.tools.manager import ToolManager
 manager = ToolManager()
 
 
-def get_manager(mcp, cfg: MCPConfig, register_id: str):
+def get_manager(mcp, cfg: MCPConfig):
     """
     Initializes the ToolManager and registers all configured tools and system identity.
 
@@ -18,7 +18,7 @@ def get_manager(mcp, cfg: MCPConfig, register_id: str):
     # 1. Load the Federated Fleet Tools
     # This automatically boots the SystemTool and any discovery modules
     print(f"📡 Initializing System Identity...")
-    manager.load_fleet_tools(mcp, include=cfg.discovery, worker_id=register_id)
+    manager.load_fleet_tools(mcp, include=cfg.discovery)
 
     # 2. Handle explicit registration of specific paths (Tools, Prompts, Resources)
     for endpoint in register_explicit_capabilities(mcp, cfg):
@@ -40,7 +40,6 @@ def register_explicit_capabilities(mcp, cfg: MCPConfig):
         cfg (MCPConfig): The loaded configuration object.
     """
     # Map configuration lists to the manager's registration methods
-    # Note: These methods must be present in your ToolManager implementation
     registries = [
         (cfg.tools, manager.register_tool),
         (cfg.prompts, manager.register_prompt),
