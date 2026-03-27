@@ -146,3 +146,59 @@ class ToolManager:
         mcp.add_prompt(endpoint)
         self.registered_keys.add(f"prompt:{actual_name}")
         return endpoint
+
+    def register_event(self, mcp, class_path: str, name: str = None):
+        """
+        Loads an external Event Class (e.g. FluxEvents), validates it,
+        and registers it with the SubscriptionManager.
+        """
+        try:
+            # 1. Load the class
+            module_path, class_name = class_path.rsplit(".", 1)
+            module = importlib.import_module(module_path)
+            cls = getattr(module, class_name)
+
+            if not inspect.isclass(cls):
+                raise TypeError(f"{class_path} is not a class.")
+
+            # 2. Instantiate and Validate
+            instance = cls()
+            required = ["get_metadata", "subscribe", "unsubscribe"]
+            for req in required:
+                if not hasattr(instance, req):
+                    raise AttributeError(f"Event class {class_name} missing required method: {req}")
+
+            # 3. Register with the Event Manager
+            provider_name = name or class_name.lower().replace("events", "")
+            manager = get_event_manager()
+            manager.register_provider(provider_name, instance)
+
+            # 4. Inject the 3 core MCP tools if this is the first event registered
+            if not self._events_initialized:
+                self._register_core_event_tools(mcp)
+                self._events_initialized = True
+
+            print(f"   📡 Event Provider Registered: {provider_name}")
+            return instance
+
+        except Exception as e:
+            print(f"❌ Failed to register event provider at {class_path}: {e}")
+
+    def _register_core_event_tools(self, mcp):
+        """
+        Adds the list, subscribe, and unsubscribe tools to FastMCP.
+        """
+        from fastmcp.tools import Tool
+
+        from mcpserver.events import tools as event_tools
+
+        core_funcs = [
+            event_tools.list_event_streams,
+            event_tools.subscribe,
+            event_tools.unsubscribe,
+        ]
+
+        for func in core_funcs:
+            endpoint = Tool.from_function(func, name=func.__name__)
+            mcp.add_tool(endpoint)
+            self.registered_keys.add(f"tool:{func.__name__}")

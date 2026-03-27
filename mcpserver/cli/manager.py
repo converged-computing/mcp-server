@@ -44,6 +44,7 @@ def register_explicit_capabilities(mcp, cfg: MCPConfig):
         (cfg.tools, manager.register_tool),
         (cfg.prompts, manager.register_prompt),
         (cfg.resources, manager.register_resource),
+        (cfg.events, manager.register_event),
     ]
 
     for capability_list, register_func in registries:

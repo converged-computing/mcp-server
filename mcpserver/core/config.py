@@ -50,6 +50,7 @@ class MCPConfig:
     exclude: Optional[str] = None
     discovery: List[str] = field(default_factory=list)
     tools: List[Capability] = field(default_factory=list)
+    events: List[Capability] = field(default_factory=list)
     prompts: List[Capability] = field(default_factory=list)
     resources: List[Capability] = field(default_factory=list)
 
@@ -90,6 +91,7 @@ class MCPConfig:
             exclude=settings.get("exclude"),
             discovery=data.get("discovery", []),
             tools=make_caps("tools"),
+            events=make_caps("events"),
             prompts=make_caps("prompts"),
             resources=make_caps("resources"),
         )
@@ -112,6 +114,7 @@ class MCPConfig:
             exclude=args.exclude,
             discovery=args.tool_module or [],
             tools=[Capability(path=t) for t in (args.tool or [])],
+            events=[Capability(path=e) for t in (args.event or [])],
             prompts=[Capability(path=p) for p in (args.prompt or [])],
             resources=[Capability(path=r) for r in (args.resource or [])],
         )

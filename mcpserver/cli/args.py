@@ -34,6 +34,9 @@ def populate_start_args(start):
         help="Additional tool module paths to discover from.",
         default=[],
     )
+    start.add_argument(
+        "--event", action="append", help="Direct event stream to import.", default=[]
+    )
     start.add_argument("--tool", action="append", help="Direct tool to import.", default=[])
     start.add_argument("--resource", action="append", help="Direct resource to import.", default=[])
     start.add_argument("--prompt", action="append", help="Direct prompt to import.", default=[])
