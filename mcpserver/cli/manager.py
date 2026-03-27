@@ -15,16 +15,16 @@ def get_manager(mcp, cfg: MCPConfig):
         system_type (str): Optional legacy system type identifier.
     """
 
-    # 1. Load the Federated Fleet Tools
+    # Load fleet tools
     # This automatically boots the SystemTool and any discovery modules
     print(f"📡 Initializing System Identity...")
     manager.load_fleet_tools(mcp, include=cfg.discovery)
 
-    # 2. Handle explicit registration of specific paths (Tools, Prompts, Resources)
-    for endpoint in register_explicit_capabilities(mcp, cfg):
-        print(f"   ✅ Registered Explicit: {endpoint.name}")
+    # Handle explicit registration of specific paths (Tools, Prompts, Resources)
+    for endpoint, emoji in register_explicit_capabilities(mcp, cfg):
+        print(f"   {emoji} Registered: {endpoint.name}")
 
-    # 3. Handle SSL Visualization
+    # Handle SSL
     if cfg.server.ssl_keyfile is not None and cfg.server.ssl_certfile is not None:
         print(f"   🔐 SSL Enabled")
 
@@ -41,13 +41,13 @@ def register_explicit_capabilities(mcp, cfg: MCPConfig):
     """
     # Map configuration lists to the manager's registration methods
     registries = [
-        (cfg.tools, manager.register_tool),
-        (cfg.prompts, manager.register_prompt),
-        (cfg.resources, manager.register_resource),
-        (cfg.events, manager.register_event),
+        (cfg.tools, manager.register_tool, "✅"),
+        (cfg.prompts, manager.register_prompt, "💬"),
+        (cfg.resources, manager.register_resource, "⛰️"),
+        (cfg.events, manager.register_event, "📡"),
     ]
 
-    for capability_list, register_func in registries:
+    for capability_list, register_func, emoji in registries:
         for item in capability_list:
             # item is a CapabilityConfig object with .path and .name
-            yield register_func(mcp, item.path, name=item.name)
+            yield register_func(mcp, item.path, name=item.name), emoji
