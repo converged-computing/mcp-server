@@ -6,6 +6,8 @@ from fastmcp.prompts import Prompt
 from fastmcp.resources import Resource
 from fastmcp.tools import Tool
 
+from mcpserver.events import get_event_manager
+
 from .base import BaseTool
 from .system.system import SystemTool
 
@@ -20,6 +22,7 @@ class ToolManager:
         self.tools: Dict[str, Dict[str, Any]] = {}
         self.instances: Dict[str, BaseTool] = {}
         self.registered_keys: Set[str] = set()
+        self._events_initialized = False
 
     def register_instance_with_mcp(self, mcp, instance: BaseTool):
         """
@@ -173,12 +176,14 @@ class ToolManager:
             manager = get_event_manager()
             manager.register_provider(provider_name, instance)
 
+            # Ensure we can satisfy the server print "name"
+            if not hasattr(instance, "name"):
+                instance.name = provider_name
+
             # 4. Inject the 3 core MCP tools if this is the first event registered
             if not self._events_initialized:
                 self._register_core_event_tools(mcp)
                 self._events_initialized = True
-
-            print(f"   📡 Event Provider Registered: {provider_name}")
             return instance
 
         except Exception as e:
