@@ -6,6 +6,16 @@ from mcp.types import JSONRPCNotification
 from mcpserver.events import get_event_manager
 
 
+# This shim solves a bug with "Multiple values for keyword argument jsonrpc error
+# by hiding the jsonrpc field during the serialization.
+class SilentNotification(JSONRPCNotification):
+    def model_dump(self, *args, **kwargs) -> dict[str, Any]:
+        d = super().model_dump(*args, **kwargs)
+        # Remove it so the SDK can add it back
+        d.pop("jsonrpc", None)
+        return d
+
+
 async def list_event_streams() -> List[Dict[str, Any]]:
     """
     Discovery tool to list all available reactive event providers and their requirements.
@@ -52,11 +62,17 @@ async def subscribe(provider_name: str, params: Dict[str, Any], ctx: Context) ->
     # Internal bridge to route class-level events into MCP JSON-RPC notifications
     async def mcp_notify_bridge(sub_id: str, data: dict):
         if ctx and hasattr(ctx, "session") and ctx.session:
-            notification = JSONRPCNotification(
-                method="notifications/event",
-                params={"subscription_id": sub_id, "provider": provider_name, "data": data},
+            notification = SilentNotification.model_construct(
+                method="notifications/message",
+                params={
+                    "level": "info",
+                    "data": {
+                        "subscription_id": sub_id,
+                        "provider": provider_name,
+                        "data": data,
+                    },
+                },
             )
-
             try:
                 # Now we pass the single object as required
                 await ctx.session.send_notification(notification)
