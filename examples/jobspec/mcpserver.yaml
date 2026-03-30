@@ -1,7 +1,3 @@
 tools:
   - path: flux_mcp.validate.flux_validate_jobspec
-  - path: flux_mcp.transformer.transform_jobspec
-
-prompts:
-  - path: flux_mcp.validate.flux_validate_jobspec_persona
-  - path: flux_mcp.transformer.transform_jobspec_persona
+  - path: hpc_mcp.filesystem.filesystem_write_file

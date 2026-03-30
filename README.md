@@ -250,12 +250,16 @@ export SSL_CERT_FILE=$(pwd)/certs/cert.pem
 ```
 And you'll see the server get hit.
 
+
+## Full Architecture
+
 ### Starting a Hub
 
 You'll need to install support for the associated worker and resource discovery:
 
 ```bash
 pip install mcp-serve[hub]
+pip install mcp-serve[all]
 ```
 
 The mcp-server can register worker hubs, which are other MCP servers that register to it. To start the mcpserver as a hub:
@@ -268,6 +272,8 @@ mcpserver start --hub --hub-secret potato
 In another terminal, start a worker using the token that is generated. Add some functions for fun.
 
 ```bash
+# If it wants to write batch jobs.
+pip install hpc-mcp --break-system-packages
 mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --join-secret potato --port 7777
 ```
 
@@ -278,7 +284,7 @@ export MCPSERVER_JOIN_SECRET=potato
 mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --port 7777
 ```
 
-Test doing queries for status:
+Test doing raw queries for status. These are manual and local queries.
 
 ```bash
 # Get listing of workers and metadata
@@ -293,6 +299,31 @@ python3 ./examples/mcp-query.py http://localhost:8000/mcp n_781e903e4f10_get_sta
 
 You can test it without the join secret, or a wrong join secret, to see it fail.
 
+### Resource Secretary Client
+
+This is the client general interface:
+
+```bash
+# Includes request, asking secretaries, selection, and dispatch
+resource-ask negotiate "I need <resources, constraints>"
+
+# Includes request and asking secretaries
+resource-ask satisfy "I need <resources, constraints>"
+
+# Includes request, asking secretaries, and select
+resource-ask select "I need <resources, constraints>"
+
+# Dispatch directly to a named cluster
+resource-ask dispatch <cluster> "I need <resources>"
+```
+
+The `resource-ask` client, which can support using a local model to run selection and other algorithms. You can also "roll your own" stuff using the server endpoints, but this library provides interfaces for doing and extending that already.
+
+```bash
+pip install resource-secretary
+```
+
+
 #### Negotiating a Job
 
 When a user has a request, it goes to the hub as a prompt. We use a prompt instead of a set of hard coded policies, because it can technically say anything. E.g.,
@@ -306,11 +337,34 @@ pip install -e .[gemini] --break-system-packages
 pip install -e .[openai] --break-system-packages
 ```
 
-Since we are running in a VSCode environment, let's asked a smaller scoped task.
+For the example, I like to find spack to be discoverable. We can install to spack to see how the responses change.
 
 ```bash
-python3 examples/negotiate/1-negotiate-job.py "I need to run LAMMPS with 1 node. Do we have a build with KOKKOS and MPI"
+git clone --depth 1 https://github.com/spack/spack /tmp/spack
+export SPACK_ROOT=/tmp/spack
+flux start
 ```
+
+And start the worker after that. Since we are running in a VSCode environment, let's asked a smaller scoped task.
+
+```bash
+# Satisfy request
+resource-ask satisfy "Can you run cowsay on one node?"
+
+# List selection algorihtms
+resource-ask list select
+
+# Negotiat (sastisfy, select, and dispatch) with a selection algorithm
+resource-ask negotiate "I need to run LAMMPS with 1 node." --select agentic
+```
+
+You'll notice that the interface suggests using "select" next. The above "negotiate" is akin to a satisfy request. We do the following:
+
+```console
+[resource-ask] (client)  --> [negotiate_job] (hub) --> [secretary_ask] (workers) --> return to hub --> [client]
+```
+
+A select would take this a step further, and select.
 
 The above is working, and the response comes back! Next I need to work on the selection algorithm and delegation.
 Likely to start I'll randomly select (that will be an interface that is valid to choose) and then allow me to implement delegation. The remainder of notes are from before.
