@@ -64,6 +64,20 @@ class HubManager:
                 return {"message": "No workers registered."}
             return await self.fetch_all_statuses()
 
+        @self.mcp.tool(name="dispatch_job")
+        async def dispatch_job(worker_id: str, prompt: str) -> dict:
+            """
+            Directly targets a specific worker to execute a job.
+            """
+            info = self.workers.get(worker_id)
+            if not info:
+                return {"error": f"Worker {worker_id} not found."}
+
+            async with info["client"] as sess:
+                # Call the worker's local execution tool
+                result = await sess.call_tool("submit", {"request": prompt})
+                return json.loads(utils.extract_code_block(result.content[0].text))
+
         @self.mcp.tool(name="negotiate_job")
         async def negotiate_job(prompt: str) -> dict:
             """
@@ -99,11 +113,11 @@ class HubManager:
                         except:
                             proposal_data = {"proposal_text": raw_text}
 
-                        status = self.get_negotiation_status(raw_text)
+                        # Parse and return the result
                         return wid, {
                             "type": "agentic_proposal",
                             "data": proposal_data,
-                            "status": status,
+                            "status": utils.extract_code_block(raw_text),
                         }
 
                     else:
@@ -121,6 +135,7 @@ class HubManager:
         start_time = time.time()
 
         # Parallel execution of all worker negotiations
+        # TODO: set a timeout option here. We currently know our workers will return, but should not assume.
         results = await asyncio.gather(
             *[negotiate_with_worker(w, i) for w, i in self.workers.items()]
         )
@@ -133,19 +148,6 @@ class HubManager:
             "user_prompt": prompt,
             "proposals": dict(results),
         }
-
-    def get_negotiation_status(self, text):
-        """
-        This is a simple function to derive a final status.
-
-        We require the secreturn to return one of READY, BUSY, INCOMPATIBLE.
-        Instead of trying to parse more json, let's try this simple approach.
-        """
-        for status in ["READY", "BUSY", "INCOMPATIBLE"]:
-            if status in text:
-                return status
-        # If we get here we need to refine this approach.
-        return "UNKNOWN"
 
     async def fetch_all_statuses(self) -> dict:
         """

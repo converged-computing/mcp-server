@@ -1,11 +1,14 @@
 import asyncio
+import json
 import socket
 import time
 from typing import Any, Dict, Optional
 
 import httpx
 from resource_secretary.providers import discover_providers
+from rich import print
 
+import mcpserver.utils as utils
 from mcpserver.logger import logger
 
 
@@ -33,6 +36,7 @@ class WorkerManager:
         # Probe the local system on startup. E.g., "we found spack, flux, etc."
         logger.info("📡 Probing local system for resource providers...")
         self.catalog = discover_providers()
+        self.show()
 
         # Static Manifest for the worker
         self.manifest = self.build_manifest()
@@ -43,6 +47,15 @@ class WorkerManager:
 
         # Register MCP Tools automatically
         self.register_agent_tools()
+
+    def show(self):
+        """
+        Show providers installed.
+        """
+        for category, providers in self.catalog.items():
+            providers = ", ".join([p.name for p in providers])
+            print(f"  [purple]{category.rjust(10)}[/purple] {providers}")
+        print()
 
     def build_manifest(self) -> Dict[str, Any]:
         """
@@ -107,6 +120,25 @@ class WorkerManager:
             proposal = await agent.negotiate(request)
 
             return {"worker_id": self.worker_id, "proposal": proposal}
+
+        @self.mcp.tool(name="submit")
+        async def receive_job(request: str) -> dict:
+            """
+            Receive a job. Accepts a job request, invokes the local Secretary to
+            generate a spec, submit it, and verify the job ID.
+            """
+            from resource_secretary.agents.secretary import SecretaryAgent
+
+            active_providers = [inst for cat in self.catalog.values() for inst in cat]
+
+            agent = SecretaryAgent(active_providers)
+            raw_result = await agent.submit(request)
+            try:
+                receipt = json.loads(utils.extract_code_block(raw_result))
+            except:
+                receipt = {"status": "FAILED", "reasoning": raw_result}
+
+            return {"worker_id": self.worker_id, "receipt": receipt}
 
     async def run_registration(self):
         """

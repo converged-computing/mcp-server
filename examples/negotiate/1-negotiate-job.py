@@ -12,6 +12,7 @@ async def run_negotiation(url, prompt):
     console.print(f"[dim]Request: {prompt}[/dim]\n")
     
     async with Client(url) as hub:
+        # Step 1: Negotiation. This is akin to a satisfy request
         result = await hub.call_tool("negotiate_job", {"prompt": prompt})
         data = result.structured_content
 
@@ -19,7 +20,8 @@ async def run_negotiation(url, prompt):
         table.add_column("Worker ID", style="magenta")
         table.add_column("Proposal / Reasoning", style="white")
         table.add_column("Verdict", justify="center")
-
+        
+        # We get back a set of proposals
         for wid, response in data.get("proposals", {}).items():
             cluster_result = response.get("data", {})
             proposal_text = cluster_result.get("proposal", "No response.")
