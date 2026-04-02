@@ -38,7 +38,7 @@ class SystemTool(BaseTool):
     def get_status(self) -> Dict[str, Any]:
         return {"timestamp": time.time(), "manifest": self.build_manifest()}
 
-    async def ask_secretary(self, request: str) -> Dict[str, Any]:
+    async def ask_secretary(self, request: str, verbose=False) -> Dict[str, Any]:
         """
         Wakes up the local Secretary Agent using the configured backend.
         """
@@ -49,7 +49,7 @@ class SystemTool(BaseTool):
             api_base=self.backend_config["base"],
         )
 
-        agent = SecretaryAgent(self.active_providers, backend=backend)
+        agent = SecretaryAgent(self.active_providers, backend=backend, verbose=verbose)
         proposal = await agent.negotiate(request)
 
         return {"proposal": proposal, "status": "SUCCESS"}

@@ -18,12 +18,15 @@ class HubManager:
     reflects their tools, and manages federated job negotiation.
     """
 
-    def __init__(self, mcp, host: str, port: int, secret: str = None):
+    def __init__(self, mcp, host: str, port: int, secret: str = None, batch=None):
         self.mcp = mcp
         self.host = host
         self.port = port
         self.secret = secret or secrets.token_urlsafe(32)
         self.workers: Dict[str, Dict[str, Any]] = {}
+
+        # Make requests to hub in batches
+        self.setup_batch(batch)
 
         # Track registered proxies to prevent ValueError on worker re-registration
         self._registered_proxies = set()
@@ -32,6 +35,26 @@ class HubManager:
         self._print_banner()
         self._register_hub_tools()
 
+    def setup_batch(self, batch_size=None):
+        """
+        Set the function to call the fleet.
+        If we are worried about rate limits or running experiments,
+        we should be sure to run in small batches.
+        """
+        # Set the fleet engine to run full parallel
+        self.semaphore = None
+        self.run_on_fleet = self.run_on_fleet_parallel
+
+        if not batch_size or batch_size <= 0:
+            logger.info(f"⚡ Hub initialized in full Parallel mode")
+            return
+
+        # Set the fleet engine to use the semaphore
+        self.batch_size = batch_size
+        self.semaphore = asyncio.Semaphore(batch_size)
+        self.run_on_fleet = self.run_on_fleet_batched
+        logger.info(f"🚦 Hub initialized with Batch Size: {batch_size}")
+
     @classmethod
     def from_args(cls, mcp, args) -> Optional["HubManager"]:
         """
@@ -39,7 +62,7 @@ class HubManager:
         """
         if not getattr(args, "hub", False):
             return None
-        return cls(mcp, host=args.host, port=args.port, secret=args.hub_secret)
+        return cls(mcp, host=args.host, port=args.port, secret=args.hub_secret, batch=args.batch)
 
     def _print_banner(self):
         """
@@ -49,6 +72,47 @@ class HubManager:
         print(f"   Master Secret: {self.secret}")
         print("   Workers must use this secret to join the hub")
         print(f"   mcpserver start --join {self.registration_url}\n")
+
+    async def run_on_fleet_parallel(self, action_fn) -> Dict[str, Any]:
+        """
+        Run parallel sessions across all workers.
+        action_fn: An async function that takes (worker_id, session) and returns data.
+        """
+
+        async def _safe_wrapper(wid, info):
+            try:
+                async with info["client"] as sess:
+                    return wid, await action_fn(wid, sess)
+            except Exception as e:
+                return wid, {"type": "error", "message": str(e)}
+
+        if not self.workers:
+            return {}
+
+        # Parallel execution of all worker actions
+        results = await asyncio.gather(*[_safe_wrapper(w, i) for w, i in self.workers.items()])
+        return dict(results)
+
+    async def run_on_fleet_batched(self, action_fn) -> Dict[str, Any]:
+        """
+        Execute on workers using a semaphore to stay under rate limits.
+        """
+
+        async def _safe_wrapper(wid, info):
+            # Wait for a spot in the semaphore
+            async with self.semaphore:
+                try:
+                    # Add a micro-jitter (100-300ms) to prevent perfect bursts
+                    await asyncio.sleep(random.uniform(0.1, 0.3))
+                    async with info["client"] as sess:
+                        return wid, await action_fn(wid, sess)
+                except Exception as e:
+                    return wid, {"type": "error", "message": str(e)}
+
+        if not self.workers:
+            return {}
+        results = await asyncio.gather(*[_safe_wrapper(w, i) for w, i in self.workers.items()])
+        return dict(results)
 
     def _register_hub_tools(self):
         """
@@ -74,7 +138,6 @@ class HubManager:
                 return {"error": f"Worker {worker_id} not found."}
 
             async with info["client"] as sess:
-                # Call the worker's local execution tool
                 result = await sess.call_tool("submit", {"request": prompt})
                 return json.loads(utils.extract_code_block(result.content[0].text))
 
@@ -88,97 +151,95 @@ class HubManager:
                 return {"error": "No workers registered in fleet."}
             return await self.broadcast_negotiation(prompt)
 
+        @self.mcp.tool(name="export_fleet_truth")
+        async def export_fleet_truth() -> dict:
+            """
+            Collects internal mock metadata (ground truth) from all workers.
+            Used for accuracy experiments to compare against agent findings,
+            but you could also use it for a real worker.
+            """
+            if not self.workers:
+                return {"error": "No workers registered."}
+
+            async def truth_handler(wid, sess):
+                mcp_result = await sess.call_tool("export_provider_metadata", {})
+                return json.loads(mcp_result.content[0].text)
+
+            results = await self.run_on_fleet(truth_handler)
+            return {"timestamp": time.time(), "ground_truth": results}
+
     async def broadcast_negotiation(self, prompt: str) -> dict:
         """
-        Parallelized broadcast using asyncio.gather.
-        Each worker is evaluated independently and concurrently!
+        Uses the Fleet Engine to invoke Agentic Secretaries on all children.
         """
 
-        async def negotiate_with_worker(wid, info):
-            try:
-                async with info["client"] as sess:
-                    # Check for Level 2 support (Secretary Agent)
-                    tools = await sess.list_tools()
-                    has_secretary = any(t.name == "ask_secretary" for t in tools)
+        async def negotiate_handler(wid, sess):
+            # Check for Level 2 support (Secretary Agent)
+            tools = await sess.list_tools()
+            has_secretary = any(t.name == "ask_secretary" for t in tools)
 
-                    if has_secretary:
-                        # Invoke the Agentic Secretary on the child cluster
-                        mcp_result = await sess.call_tool("ask_secretary", {"request": prompt})
-                        raw_text = mcp_result.content[0].text
-                        print(type(raw_text))
+            if has_secretary:
+                # Invoke the Agentic Secretary
+                mcp_result = await sess.call_tool("ask_secretary", {"request": prompt})
+                raw_text = mcp_result.content[0].text
 
-                        try:
-                            # Handle potential quote issues in LLM-generated JSON
-                            proposal_data = json.loads(utils.extract_code_block(raw_text))
-                        except:
-                            proposal_data = {"proposal_text": raw_text}
+                try:
+                    # Parse and handle potential quote issues in LLM JSON
+                    proposal_data = json.loads(utils.extract_code_block(raw_text))
+                except:
+                    proposal_data = {"proposal_text": raw_text}
 
-                        # Parse and return the result
-                        return wid, {
-                            "type": "agentic_proposal",
-                            "data": proposal_data,
-                            "status": utils.extract_code_block(raw_text),
-                        }
-
-                    else:
-                        # Fallback to get status.
-                        mcp_result = await sess.call_tool("get_status", {})
-                        raw_text = mcp_result.content[0].text
-                        return wid, {
-                            "type": "manifest_only",
-                            "reasoning": "Worker has no Secretary Agent. Providing static metadata.",
-                            "data": raw_text,
-                        }
-            except Exception as e:
-                return wid, {"type": "error", "message": str(e)}
+                return {
+                    "type": "agentic_proposal",
+                    "data": proposal_data,
+                    "status": utils.extract_code_block(raw_text),
+                }
+            else:
+                # Fallback to manifest only
+                mcp_result = await sess.call_tool("get_status", {})
+                return {
+                    "type": "manifest_only",
+                    "reasoning": "Worker has no Secretary Agent. Providing static metadata.",
+                    "data": mcp_result.content[0].text,
+                }
 
         start_time = time.time()
+        results = await self.run_on_fleet(negotiate_handler)
 
-        # Parallel execution of all worker negotiations
-        # TODO: set a timeout option here. We currently know our workers will return, but should not assume.
-        results = await asyncio.gather(
-            *[negotiate_with_worker(w, i) for w, i in self.workers.items()]
-        )
-
-        # NOTE from vsoch: this is just for debugging
-        print(results)
         return {
             "negotiation_id": secrets.token_hex(4),
             "timestamp": start_time,
             "user_prompt": prompt,
-            "proposals": dict(results),
+            "proposals": results,
         }
 
     async def fetch_all_statuses(self) -> dict:
         """
-        Collect aggregate telemetry from all workers in parallel.
+        Collect aggregate telemetry from all workers using the Fleet Engine.
         """
 
-        async def get_one(wid, info):
+        async def status_handler(wid, sess):
+            info = self.workers[wid]
             base_metadata = {
-                "type": info.get("type", "generic"),
                 "labels": info.get("labels", {}),
                 "url": info["url"],
             }
+
+            mcp_result = await sess.call_tool("get_status", {})
+            raw_text = mcp_result.content[0].text
             try:
-                async with info["client"] as sess:
-                    mcp_result = await sess.call_tool("get_status", {})
-                    raw_text = mcp_result.content[0].text
-                    try:
-                        status_data = json.loads(raw_text.replace("'", '"'))
-                    except:
-                        status_data = raw_text
+                # Note: Preserving the replace hack from original for status data
+                status_data = json.loads(raw_text.replace("'", '"'))
+            except:
+                status_data = raw_text
 
-                    return wid, {
-                        **base_metadata,
-                        "online": True,
-                        "status": status_data,
-                    }
-            except Exception as e:
-                return wid, {**base_metadata, "online": False, "error": str(e)}
+            return {
+                **base_metadata,
+                "online": True,
+                "status": status_data,
+            }
 
-        results = await asyncio.gather(*[get_one(w, i) for w, i in self.workers.items()])
-        return dict(results)
+        return await self.run_on_fleet(status_handler)
 
     def bind_to_app(self, app):
         """
@@ -197,7 +258,6 @@ class HubManager:
             self.workers[wid] = {
                 "url": wurl,
                 "client": Client(wurl),
-                "type": data.get("type", "generic"),
                 "labels": data.get("labels", {}),
             }
 
@@ -212,7 +272,6 @@ class HubManager:
         try:
             async with Client(url) as client:
                 tools = await client.list_tools()
-                print()
                 for tool in tools:
                     self._create_proxy(worker_id, tool)
         except Exception as e:

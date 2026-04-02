@@ -19,35 +19,11 @@ The library here has the following abstractions.
 
 - **tools**: server tools, prompts, and resources
 - **ui**: user interface that an engine (with a main manager) uses
-- **core**: shared assets, primarily the plan/step/config definitions
+- **core**: shared assets, primarily the plan/step/config definitions and worker/hub hierarchy roles
 - **routes**: server views not related to mcp.
-- **backends**: child of an engine, these are the model services (llama, openai, gemini)
 - **databases**: how to save results as we progress in a pipeline (currently we support sqlite and filesystem JSON)
 
 For the above, the engines, tools, ui, databases, and backends are interfaces.
-
-### Tools
-
-There are different means to add tools here:
-
- - **internal** are discovered in `mcpserver/tools` (assist the server).
- - **external modules**: externally discovered via the same mechanism.
- - **external one-off**: add a specific tool, prompt, or resource to a server (suggested)
-
-I am suggesting a combined approach of the first and last bullet for security. E.g., when we deploy, we do not want to open a hole to add functions that are not known. In the context of a job, we likely have a specific need or use case and can select from a library. I am developing scoped tools with this aim or goal -- to be able to deploy a job and start a server within the context of the job with exactly what is needed. Here is how the module discovery works:
-
-```python
-from mcpserver.tools.manager import ToolManager
-
-# Discover and register defaults
-manager = ToolManager()
-
-# The tools vendored here are automatically discovered..
-manager.register("mcpserver.tools")
-
-# Register a different module
-manager.register("mymodule.tools")
-```
 
 ## Development
 
@@ -284,6 +260,43 @@ export MCPSERVER_JOIN_SECRET=potato
 mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --port 7777
 ```
 
+You can also start a mock worker. By default, we choose 40/40/20 for archetypes for hpc, cloud, and standalone. You can
+also specify an archetype.
+
+```bash
+mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --port 7777 --mock
+mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --port 7777 --archetype hpc
+```
+
+### Mocking a Hub
+
+If you are doing experiments, you can bring up a hub the same way:
+
+```bash
+mcpserver start --hub --hub-secret potato
+```
+
+To mock (simulate) a worker, add `--mock`, optionally with a particular archetype (one of `hpc`, `cloud`, or `standalone`). A worker ID is suggested to make the seed reproducible.
+
+```bash
+mcpserver start --join http://0.0.0.0:8000 --port 7777 --worker-id 10 --mock --join-secret potato
+mcpserver start --join http://0.0.0.0:8000 --port 7777 --worker-id 10 --mock hpc --join-secret potato
+```
+
+In another terminal, you can request to export the simulation "truth" - the metadata generated for the providers chosen for the archetype.
+
+```bash
+mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --port 7777 --worker-id 10
+```
+
+And export "truth" metadata.
+
+```bash
+resource-ask export --output ground-truth.json
+```
+
+#### Manual Queries
+
 Test doing raw queries for status. These are manual and local queries.
 
 ```bash
@@ -401,6 +414,8 @@ Here are a few design choices (subject to change, of course). I am starting with
 
 ## TODO
 
+- [ ] should we be reporting utilization (e.g., mock or nvidia smi) if it might just be a login node?
+- [ ] write function to compare reported agent result from truth? How?
 - [ ] need way to "pass forward" an error from a worker that, for example, API key not set.
 - [ ] I want to have the equivalent of a satisfy endpoint, checking for the negotiate but not dispatch.
 - [ ] I also want an equivalent "just submit to this cluster" endpoint.

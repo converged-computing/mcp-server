@@ -67,6 +67,12 @@ def populate_start_args(start):
         default=os.environ.get("MCP_HUB_SECRET"),
         help="Secret key required for workers to register. (Auto-generated if omitted)",
     )
+    hub_group.add_argument(
+        "--batch",
+        default=None,
+        type=int,
+        help="make requests to workers in batches of X (e.g., for experiments)",
+    )
 
     # Worker Registration Group
     worker_group = start.add_argument_group("🐝 Worker Registration")
@@ -79,7 +85,7 @@ def populate_start_args(start):
         default=os.environ.get("MCPSERVER_JOIN_SECRET"),
     )
     worker_group.add_argument(
-        "--register-id",
+        "--worker-id",
         help="Unique ID for this worker. Defaults to the hostname.",
         default=socket.gethostname(),
     )
@@ -88,10 +94,27 @@ def populate_start_args(start):
         help="The URL the Hub should use to reach this worker (e.g. http://ip:port/mcp)",
     )
     worker_group.add_argument(
+        "--verbose",
+        help="Request worker to send back a second block with provider calls",
+        action="store_true",
+        default=False,
+    )
+    worker_group.add_argument(
         "--label",
         action="append",
         dest="labels",
         help="Custom labels in key=value format (e.g., --label gpu=h100). Can be used multiple times.",
+    )
+
+    # const=True is what we get if the flag is present but no value is given
+    # default=False is what we get if the flag is totally absent
+    # THe user can also ask for an archetype (hpc, cloud, standalone)
+    worker_group.add_argument(
+        "--mock",
+        nargs="?",
+        const=True,
+        default=False,
+        help="Start a mock worker. Can optionally select hpc, cloud, or standalone",
     )
 
     # Agent Reasoning Group
