@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 from resource_secretary.providers import discover_providers
+from resource_secretary.providers.mock import discover_mock_providers
 from rich import print
 
 import mcpserver.utils as utils
@@ -26,16 +27,16 @@ class WorkerManager:
         worker_id: Optional[str] = None,
         public_url: Optional[str] = None,
         labels: Optional[list] = None,
+        mock: Optional[bool] = False,
+        verbose: Optional[bool] = False,
     ):
         self.mcp = mcp
         self.hub_url = hub_url
         self.secret = secret
         self.worker_id = worker_id or socket.gethostname()
         self.public_url = public_url
-
-        # Probe the local system on startup. E.g., "we found spack, flux, etc."
-        logger.info("📡 Probing local system for resource providers...")
-        self.catalog = discover_providers()
+        self.init_providers(mock)
+        self.verbose = verbose
         self.show()
 
         # Static Manifest for the worker
@@ -43,18 +44,30 @@ class WorkerManager:
 
         # Note from vsoch: not sure if this will be useful / what we should use for.
         self.labels = self.parse_labels(labels)
-        self.integrate_site_metadata()
 
         # Register MCP Tools automatically
         self.register_agent_tools()
 
+    def init_providers(self, mock=False):
+        """
+        Probe the local system on startup. E.g., "we found spack, flux, etc."
+        These can be faux (mock) or real discovered providers
+        """
+        logger.info("📡 Probing local system for resource providers...")
+        if mock:
+            self.catalog = discover_mock_providers(self.worker_id, choice=mock)
+        else:
+            self.catalog = discover_providers()
+
     def show(self):
         """
-        Show providers installed.
+        Show providers installed and verbosity.
         """
         for category, providers in self.catalog.items():
             providers = ", ".join([p.name for p in providers])
             print(f"  [purple]{category.rjust(10)}[/purple] {providers}")
+        if self.verbose:
+            logger.info(f"📢 Running in verbose mode. Secretary negotiate will return calls block.")
         print()
 
     def build_manifest(self) -> Dict[str, Any]:
@@ -65,15 +78,6 @@ class WorkerManager:
         for category, instances in self.catalog.items():
             manifest[category] = {inst.name: inst.metadata for inst in instances}
         return manifest
-
-    def integrate_site_metadata(self):
-        """
-        Looks for the site provider in the catalog and adds its metadata to labels.
-        """
-        site_instances = self.catalog.get("system", [])
-        for inst in site_instances:
-            if inst.name == "site":
-                self.labels.update(inst.metadata)
 
     def parse_labels(self, label_list: Optional[list]) -> dict:
         """
@@ -116,7 +120,8 @@ class WorkerManager:
             # Flatten the catalog into a list of active provider instances
             active_providers = [inst for category in self.catalog.values() for inst in category]
 
-            agent = SecretaryAgent(active_providers)
+            # Verbose mode returns a second block with CALLS
+            agent = SecretaryAgent(active_providers, verbose=self.verbose)
             proposal = await agent.negotiate(request)
 
             return {"worker_id": self.worker_id, "proposal": proposal}
@@ -140,6 +145,27 @@ class WorkerManager:
 
             return {"worker_id": self.worker_id, "receipt": receipt}
 
+        @self.mcp.tool(name="export_provider_metadata")
+        def export_provider_metadata() -> str:
+            """
+            Iterates through all providers and returns their internal 'truth' state.
+            This tool is 'hidden' from the Secretary Agent but used by the Hub.
+            """
+            truth_map = {}
+
+            # Self.catalog is a dict: {"software": [MockSpackProvider, ...]}
+            for category, providers in self.catalog.items():
+                truth_map[category] = {}
+                for p in providers:
+                    # We check if the provider has the export_truth method
+                    if hasattr(p, "export_truth"):
+                        truth_map[category][p.name] = p.export_truth()
+                    else:
+                        # Fallback to standard metadata if not a mock
+                        truth_map[category][p.name] = p.metadata
+
+            return json.dumps(truth_map, indent=2)
+
     async def run_registration(self):
         """
         Registers the worker with the Hub.
@@ -151,9 +177,6 @@ class WorkerManager:
                 "id": self.worker_id,
                 "url": self.public_url,
                 "labels": self.labels,
-                # Identify the worker by its primary workload manager if available
-                # Note from vsoch: after refactor all workers are generic, so site needs to apply this.
-                "type": self.labels.get("manager", "generic"),
                 "manifest": self.manifest,
             }
             headers = {"X-MCP-Token": self.secret}
@@ -174,15 +197,16 @@ class WorkerManager:
         if not getattr(args, "join", None):
             return None
 
-        public_url = (
-            args.public_url or f"http://{cfg.server.host}:{cfg.server.port}{cfg.server.path}"
-        )
+        default_url = f"http://{cfg.server.host}:{cfg.server.port}{cfg.server.path}"
+        public_url = args.public_url or default_url
 
         return cls(
             mcp,
+            mock=args.mock,
             hub_url=args.join,
             secret=args.join_secret,
-            worker_id=args.register_id,
+            worker_id=args.worker_id,
             public_url=public_url,
             labels=args.labels,
+            verbose=args.verbose,
         )
