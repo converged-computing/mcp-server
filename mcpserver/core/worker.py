@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import json
 import socket
 import time
@@ -123,7 +124,6 @@ class WorkerManager:
             # Verbose mode returns a second block with CALLS
             agent = SecretaryAgent(active_providers, verbose=self.verbose)
             proposal = await agent.negotiate(request)
-
             return {"worker_id": self.worker_id, "proposal": proposal}
 
         @self.mcp.tool(name="submit")
@@ -152,6 +152,7 @@ class WorkerManager:
             This tool is 'hidden' from the Secretary Agent but used by the Hub.
             """
             truth_map = {}
+            tool_registry = collections.defaultdict(list)
 
             # Self.catalog is a dict: {"software": [MockSpackProvider, ...]}
             for category, providers in self.catalog.items():
@@ -164,7 +165,19 @@ class WorkerManager:
                         # Fallback to standard metadata if not a mock
                         truth_map[category][p.name] = p.metadata
 
-            return json.dumps(truth_map, indent=2)
+                    # Capture all Secretary Tools for this provider
+                    # We can use this for simulations to assess what the agent
+                    # should have called (vs. what it did)
+                    manifest = p.discover_tools(tool_types=["secretary"])
+                    for tool_name in manifest.keys():
+                        tool_registry[category].append(f"{p.name}.{tool_name}")
+
+            metadata = {"truth": truth_map, "registry": dict(tool_registry)}
+
+            # If we have an archetype (mocking something) save it
+            if hasattr(p, "archetype"):
+                metadata["metadata"] = {"archetype": p.archetype.name}
+            return json.dumps(metadata, indent=2)
 
     async def run_registration(self):
         """
