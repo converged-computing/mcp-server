@@ -323,8 +323,11 @@ resource-ask negotiate "I need <resources, constraints>"
 # Includes request and asking secretaries
 resource-ask satisfy "I need <resources, constraints>"
 
-# Includes request, asking secretaries, and select
+# Includes request, asking secretaries, and selection
 resource-ask select "I need <resources, constraints>"
+
+# The same, but from a proposals file (json dict with data.proposal for each)
+resource-ask select --proposals proposals.json "I need <resources, constraints>"
 
 # Dispatch directly to a named cluster
 resource-ask dispatch <cluster> "I need <resources>"
