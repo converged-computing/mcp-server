@@ -4,6 +4,7 @@
 
 ![https://github.com/converged-computing/mcpserver/blob/main/img/mcpserver.png?raw=true](https://github.com/converged-computing/mcpserver/blob/main/img/mcpserver.png?raw=true)
 
+[![DOI](https://zenodo.org/badge/1134760031.svg)](https://doi.org/10.5281/zenodo.19476301)
 [![PyPI version](https://badge.fury.io/py/mcp-serve.svg)](https://badge.fury.io/py/mcp-serve)
 
 ## Design
