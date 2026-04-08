@@ -1,5 +1,6 @@
 import asyncio
 import json
+import random
 import secrets
 import time
 from typing import Any, Dict, Optional
@@ -18,15 +19,15 @@ class HubManager:
     reflects their tools, and manages federated job negotiation.
     """
 
-    def __init__(self, mcp, host: str, port: int, secret: str = None, batch=None):
+    def __init__(self, mcp, host: str, port: int, secret: str = None, batch=None, serial=False):
         self.mcp = mcp
         self.host = host
         self.port = port
         self.secret = secret or secrets.token_urlsafe(32)
         self.workers: Dict[str, Dict[str, Any]] = {}
 
-        # Make requests to hub in batches
-        self.setup_batch(batch)
+        # Make requests to hub in batches, in serial, or in parallel
+        self.set_running_mode(batch, serial)
 
         # Track registered proxies to prevent ValueError on worker re-registration
         self._registered_proxies = set()
@@ -35,7 +36,7 @@ class HubManager:
         self._print_banner()
         self._register_hub_tools()
 
-    def setup_batch(self, batch_size=None):
+    def set_running_mode(self, batch_size=None, serial=False):
         """
         Set the function to call the fleet.
         If we are worried about rate limits or running experiments,
@@ -45,7 +46,12 @@ class HubManager:
         self.semaphore = None
         self.run_on_fleet = self.run_on_fleet_parallel
 
-        if not batch_size or batch_size <= 0:
+        if serial:
+            logger.info(f"⚡ Hub initialized in serial mode")
+            self.run_on_fleet = self.run_on_fleet_serial
+            return
+
+        elif not batch_size or batch_size <= 0:
             logger.info(f"⚡ Hub initialized in full Parallel mode")
             return
 
@@ -62,7 +68,14 @@ class HubManager:
         """
         if not getattr(args, "hub", False):
             return None
-        return cls(mcp, host=args.host, port=args.port, secret=args.hub_secret, batch=args.batch)
+        return cls(
+            mcp,
+            host=args.host,
+            port=args.port,
+            secret=args.hub_secret,
+            batch=args.batch,
+            serial=args.serial,
+        )
 
     def _print_banner(self):
         """
@@ -92,6 +105,24 @@ class HubManager:
         # Parallel execution of all worker actions
         results = await asyncio.gather(*[_safe_wrapper(w, i) for w, i in self.workers.items()])
         return dict(results)
+
+    async def run_on_fleet_serial(self, action_fn) -> Dict[str, Any]:
+        """
+        Run sessions across all workers one by one (sequentially).
+        """
+        results = {}
+        if not self.workers:
+            return results
+
+        for wid, info in self.workers.items():
+            try:
+                # await each one so we wait for worker to return
+                async with info["client"] as sess:
+                    results[wid] = await action_fn(wid, sess)
+            except Exception as e:
+                results[wid] = {"type": "error", "message": str(e)}
+
+        return results
 
     async def run_on_fleet_batched(self, action_fn) -> Dict[str, Any]:
         """

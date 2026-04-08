@@ -73,6 +73,12 @@ def populate_start_args(start):
         type=int,
         help="make requests to workers in batches of X (e.g., for experiments)",
     )
+    hub_group.add_argument(
+        "--serial",
+        action="store_true",
+        help="Run the hub in serial mode (ideal for experiments on single machines)",
+        default=False,
+    )
 
     # Worker Registration Group
     worker_group = start.add_argument_group("🐝 Worker Registration")
