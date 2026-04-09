@@ -40,7 +40,7 @@ jobs:
       run: |
         tag=${GITHUB_REF#refs/tags/}
         echo "Tagging and releasing ${{ env.container }}:${tag}"
-        docker tag ${{ env.container }}:latest ${{ env.container }}:${tag}
+        docker tag ${{ env.container }}:arm ${{ env.container }}:${tag}
 
     - name: Deploy Container
       run: make push
