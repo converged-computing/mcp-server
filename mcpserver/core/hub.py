@@ -2,6 +2,7 @@ import asyncio
 import json
 import random
 import secrets
+import socket
 import time
 from typing import Any, Dict, Optional
 
@@ -19,24 +20,42 @@ class HubManager:
     reflects their tools, and manages federated job negotiation.
     """
 
-    def __init__(self, mcp, host: str, port: int, secret: str = None, batch=None, serial=False):
+    def __init__(
+        self,
+        mcp,
+        host: str,
+        port: int,
+        secret: str = None,
+        batch=None,
+        serial=False,
+        dual=False,
+        hub_id=None,
+    ):
         self.mcp = mcp
         self.host = host
         self.port = port
         self.secret = secret or secrets.token_urlsafe(32)
         self.workers: Dict[str, Dict[str, Any]] = {}
+        self.hub_id = hub_id or socket.gethostname()
 
         # Make requests to hub in batches, in serial, or in parallel
-        self.set_running_mode(batch, serial)
+        self.set_running_mode(batch, serial, dual)
 
         # Track registered proxies to prevent ValueError on worker re-registration
         self._registered_proxies = set()
-
-        self.registration_url = f"http://{host}:{port}/register"
         self._print_banner()
         self._register_hub_tools()
 
-    def set_running_mode(self, batch_size=None, serial=False):
+    @property
+    def url(self):
+        # This is running with uvicorn that serves the ssl
+        return f"http://{self.host}:{self.port}"
+
+    @property
+    def registration_url(self):
+        return f"{self.url}/register"
+
+    def set_running_mode(self, batch_size=None, serial=False, dual=False):
         """
         Set the function to call the fleet.
         If we are worried about rate limits or running experiments,
@@ -61,6 +80,16 @@ class HubManager:
         self.run_on_fleet = self.run_on_fleet_batched
         logger.info(f"🚦 Hub initialized with Batch Size: {batch_size}")
 
+        # If we are also running as a worker, add ourselves to the fleet
+        if not dual:
+            return
+
+        hub_id = self.hub_id or socket.gethostname()
+        self.workers[hub_id] = {
+            "url": self.registration_url,
+            "client": Client(self.registration_url),
+        }
+
     @classmethod
     def from_args(cls, mcp, args) -> Optional["HubManager"]:
         """
@@ -75,6 +104,7 @@ class HubManager:
             secret=args.hub_secret,
             batch=args.batch,
             serial=args.serial,
+            dual=args.dual,
         )
 
     def _print_banner(self):
