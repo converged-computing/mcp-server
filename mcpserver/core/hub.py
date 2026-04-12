@@ -13,6 +13,8 @@ from rich import print
 import mcpserver.utils as utils
 from mcpserver.logger import logger
 
+from .base import WorkerBase
+
 
 class HubManager:
     """
@@ -30,10 +32,12 @@ class HubManager:
         serial=False,
         dual=False,
         hub_id=None,
+        path="/mcp",
     ):
         self.mcp = mcp
         self.host = host
         self.port = port
+        self.path = path
         self.secret = secret or secrets.token_urlsafe(32)
         self.workers: Dict[str, Dict[str, Any]] = {}
         self.hub_id = hub_id or socket.gethostname()
@@ -81,21 +85,15 @@ class HubManager:
         logger.info(f"🚦 Hub initialized with Batch Size: {batch_size}")
 
         # If we are also running as a worker, add ourselves to the fleet
-        if not dual:
-            return
-
-        hub_id = self.hub_id or socket.gethostname()
-        self.workers[hub_id] = {
-            "url": self.registration_url,
-            "client": Client(self.registration_url),
-        }
+        self.dual = dual
 
     @classmethod
     def from_args(cls, mcp, args) -> Optional["HubManager"]:
         """
         Create a HubManager from CLI arguments.
         """
-        if not getattr(args, "hub", False):
+        # Running in hub or dual mode?
+        if not getattr(args, "hub", False) and not getattr(args, "dual", False):
             return None
         return cls(
             mcp,
@@ -105,6 +103,8 @@ class HubManager:
             batch=args.batch,
             serial=args.serial,
             dual=args.dual,
+            # server path
+            path=args.path,
         )
 
     def _print_banner(self):
@@ -386,3 +386,25 @@ class HubManager:
 
         except Exception as e:
             logger.error(f"❌ Failed to generate dynamic proxy for {tool.name}: {e}")
+
+
+class DualHubManager(WorkerBase, HubManager):
+    """
+    Combined hub and worker base. Aka, a hub that also serves as a worker
+    """
+
+    def __init__(self, *args, **kwargs):
+        # Calls super on the HubManager. WorkerBase has no init
+        super().__init__(*args, **kwargs)
+        self.setup_dual()
+
+    def setup_dual(self):
+        """
+        Setup dual mode, which means adding ourselves to the fleet.
+        """
+        hub_id = self.hub_id or socket.gethostname()
+        default_url = f"http://{self.host}:{self.port}{self.path}"
+        self.workers[hub_id] = {
+            "url": self.registration_url,
+            "client": Client(default_url),
+        }

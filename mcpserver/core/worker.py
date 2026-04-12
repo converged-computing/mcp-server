@@ -1,8 +1,5 @@
 import asyncio
-import collections
-import json
 import socket
-import time
 from typing import Any, Dict, Optional
 
 import httpx
@@ -10,11 +7,12 @@ from resource_secretary.providers import discover_providers
 from resource_secretary.providers.mock import discover_mock_providers
 from rich import print
 
-import mcpserver.utils as utils
 from mcpserver.logger import logger
 
+from .base import WorkerBase
 
-class WorkerManager:
+
+class WorkerManager(WorkerBase):
     """
     A generic worker mcpserver that discovers its own capabilities
     and context using the resource-secretary library.
@@ -92,92 +90,6 @@ class WorkerManager:
                 k, v = item.split("=", 1)
                 labels[k.strip()] = v.strip()
         return labels
-
-    def register_agent_tools(self):
-        """
-        Registers the core negotiation tools with the FastMCP instance.
-        """
-
-        @self.mcp.tool(name="get_status")
-        async def get_status() -> dict:
-            """
-            Returns the Level 1 Static Manifest of this cluster.
-            Use this to verify hardware, software providers, and site info.
-            """
-            return {
-                "worker_id": self.worker_id,
-                "timestamp": time.time(),
-                "manifest": self.manifest,
-            }
-
-        @self.mcp.tool(name="ask_secretary")
-        async def ask_secretary(request: str) -> dict:
-            """
-            Wakes up the local Secretary Agent to perform a Level 2 investigation.
-            Use this to ask about specific software availability, queue depth, or node health.
-            """
-            from resource_secretary.agents.secretary import SecretaryAgent
-
-            # Flatten the catalog into a list of active provider instances
-            active_providers = [inst for category in self.catalog.values() for inst in category]
-
-            # Verbose mode returns a second block with CALLS
-            agent = SecretaryAgent(active_providers, verbose=self.verbose)
-            proposal = await agent.negotiate(request)
-            return {"worker_id": self.worker_id, "proposal": proposal}
-
-        @self.mcp.tool(name="submit")
-        async def receive_job(request: str) -> dict:
-            """
-            Receive a job. Accepts a job request, invokes the local Secretary to
-            generate a spec, submit it, and verify the job ID.
-            """
-            from resource_secretary.agents.secretary import SecretaryAgent
-
-            active_providers = [inst for cat in self.catalog.values() for inst in cat]
-
-            agent = SecretaryAgent(active_providers)
-            raw_result = await agent.submit(request)
-            try:
-                receipt = json.loads(utils.extract_code_block(raw_result))
-            except:
-                receipt = {"status": "FAILED", "reasoning": raw_result}
-
-            return {"worker_id": self.worker_id, "receipt": receipt}
-
-        @self.mcp.tool(name="export_provider_metadata")
-        def export_provider_metadata() -> str:
-            """
-            Iterates through all providers and returns their internal 'truth' state.
-            This tool is 'hidden' from the Secretary Agent but used by the Hub.
-            """
-            truth_map = {}
-            tool_registry = collections.defaultdict(list)
-
-            # Self.catalog is a dict: {"software": [MockSpackProvider, ...]}
-            for category, providers in self.catalog.items():
-                truth_map[category] = {}
-                for p in providers:
-                    # We check if the provider has the export_truth method
-                    if hasattr(p, "export_truth"):
-                        truth_map[category][p.name] = p.export_truth()
-                    else:
-                        # Fallback to standard metadata if not a mock
-                        truth_map[category][p.name] = p.metadata
-
-                    # Capture all Secretary Tools for this provider
-                    # We can use this for simulations to assess what the agent
-                    # should have called (vs. what it did)
-                    manifest = p.discover_tools(tool_types=["secretary"])
-                    for tool_name in manifest.keys():
-                        tool_registry[category].append(f"{p.name}.{tool_name}")
-
-            metadata = {"truth": truth_map, "registry": dict(tool_registry)}
-
-            # If we have an archetype (mocking something) save it
-            if hasattr(p, "archetype"):
-                metadata["metadata"] = {"archetype": p.archetype.name}
-            return json.dumps(metadata, indent=2)
 
     async def run_registration(self):
         """
