@@ -15,7 +15,7 @@ warnings.filterwarnings(
 from mcpserver.app import init_mcp
 from mcpserver.cli.manager import get_manager
 from mcpserver.core.config import MCPConfig
-from mcpserver.core.hub import HubManager
+from mcpserver.core.hub import DualHubManager, HubManager
 from mcpserver.core.worker import WorkerManager
 from mcpserver.logger import logger
 
@@ -64,7 +64,9 @@ def main(args, extra, **kwargs):
     app = FastAPI(title="MCP Server", lifespan=mcp_app.lifespan)
 
     # Setup Hub (parent role)
-    if args.hub:
+    if args.dual:
+        mcp.hub_manager = DualHubManager.from_args(mcp, args)
+    elif args.hub:
         mcp.hub_manager = HubManager.from_args(mcp, args)
 
     # Setup Worker (child role) - triggered by --join. We require join secret.
@@ -86,8 +88,8 @@ def main(args, extra, **kwargs):
 
     app = FastAPI(title="MCP Server", lifespan=lifespan)
 
-    # Bind the /register endpoint if we are a Hub
-    if args.hub:
+    # Bind the /register endpoint if we are a Hub (or Hub and Worker)
+    if args.hub or args.dual:
         mcp.hub_manager.bind_to_app(app)
 
     # Mount the MCP server. Note from V: we can use mount with antother FastMCP
