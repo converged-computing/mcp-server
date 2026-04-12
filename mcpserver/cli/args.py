@@ -79,6 +79,12 @@ def populate_start_args(start):
         help="Run the hub in serial mode (ideal for experiments on single machines)",
         default=False,
     )
+    # Dual mode means "I am a hub AND a worker" - added this for dispatch experiments
+    hub_group.add_argument(
+        "--dual",
+        action="store_true",
+        help="Start as both a Hub and a Worker (registers local resources to the fleet).",
+    )
 
     # Worker Registration Group
     worker_group = start.add_argument_group("🐝 Worker Registration")

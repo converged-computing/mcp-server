@@ -180,7 +180,7 @@ And with the configuration file instead:
 mcpserver start -t http --port 8089 --config ./examples/jobspec/mcpserver.yaml
 ```
 
-We will provide examples for jobspec translation functions in [fractale-mcp](https://github.com/compspec/fractale-mcp).
+We will provide examples for jobspec translation functions in [fractale](https://github.com/compspec/fractale-mcp) and the agent in [fractale-agents](https://github.com/converged-computing/fractale-agents).
 
 ### Kubernetes (kind)
 
@@ -244,6 +244,9 @@ The mcp-server can register worker hubs, which are other MCP servers that regist
 ```bash
 # Start a hub in one terminal
 mcpserver start --hub --hub-secret potato
+
+# Start in dual mode (not recommended for production, primarily for experiments)
+mcpserver start --dual --hub-secret potato
 ```
 
 In another terminal, start a worker using the token that is generated. Add some functions for fun.
