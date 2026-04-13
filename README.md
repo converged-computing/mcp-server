@@ -276,7 +276,11 @@ mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8
 If you are doing experiments, you can bring up a hub the same way:
 
 ```bash
+# Start as a standalone hub (recommended)
 mcpserver start --hub --hub-secret potato
+
+# Start in dual mode (not recommended for production or performance experiments
+mcpserver start --dual --hub-secret potato
 ```
 
 To mock (simulate) a worker, add `--mock`, optionally with a particular archetype (one of `hpc`, `cloud`, or `standalone`). A worker ID is suggested to make the seed reproducible.

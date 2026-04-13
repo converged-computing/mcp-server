@@ -82,7 +82,7 @@ class HubManager:
         self.batch_size = batch_size
         self.semaphore = asyncio.Semaphore(batch_size)
         self.run_on_fleet = self.run_on_fleet_batched
-        logger.info(f"🚦 Hub initialized with Batch Size: {batch_size}")
+        logger.info(f"🚦 Hub initialized with Batch Size: {batch_size} Worker mode: {dual}")
 
         # If we are also running as a worker, add ourselves to the fleet
         self.dual = dual
