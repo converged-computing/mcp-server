@@ -15,6 +15,32 @@ class WorkerBase:
     ask secretary. We provide it here so that a hub can use it to generate
     its dual mode (acting as worker AND hub.)
     """
+    def jsonify_response(self, result):
+        """
+        Ensure we get the text, and separate and parse tool calls,
+        which the agent will return in a verbose mode.
+        """
+        print('result')
+        print(result)
+        print(type(result))
+        if isinstance(result, dict):
+            return result
+        if not isinstance(result, str) and hasattr(result, "content"):
+            result = result.content[0].text
+     
+        # Audit the tool calls (Did the agent just get lucky?)
+        calls = []
+        if "CALLS" in result:
+            try:
+                result, calls_block = result.split("CALLS")
+                calls = utils.format_calls(calls_block)
+            except:
+                print(f"Issue parsing calls, agent had malformed response: {result}")
+                pass
+
+        result = json.loads(utils.extract_code_block(result))
+        result["calls"] = calls
+        return result
 
     def init_providers(self, mock=False):
         """
@@ -73,9 +99,9 @@ class WorkerBase:
             agent = SecretaryAgent(active_providers, verbose=self.verbose)
             raw_result = await agent.submit(request)
             try:
-                receipt = json.loads(utils.extract_code_block(raw_result))
-            except:
-                receipt = {"status": "FAILED", "reasoning": raw_result}
+                receipt = self.jsonify_response(raw_result)
+            except Exception as e:
+                receipt = {"status": "FAILED", "reasoning": raw_result, "error": str(e)}
 
             return {"worker_id": self.worker_id, "receipt": receipt}
 

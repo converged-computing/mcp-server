@@ -1,7 +1,11 @@
+import json
 import re
 
 
 def sanitize(name: str) -> str:
+    """
+    Sanitize worker ids and arguments for hub properties.
+    """
     # Replace hyphens/dots with underscores
     clean = name.replace("-", "_").replace(".", "_")
     # Python identifiers cannot start with a digit
@@ -10,8 +14,21 @@ def sanitize(name: str) -> str:
     return clean
 
 
-def format_rules(rules):
-    return "\n".join([f"- {r}" for r in rules])
+def format_calls(calls_block):
+    """
+    The secretary agent can return calls. We need to ensure we try
+    to get and parse them correctly.
+    """
+    calls = []
+    try:
+        print(calls_block)
+        print(type(calls_block))
+        calls = extract_code_block(calls_block)
+        print('success to extract calls')
+        return calls
+    except Exception as e:
+        print(f'Issue in format calls: {e}')
+        return calls
 
 
 def extract_code_block(text):
