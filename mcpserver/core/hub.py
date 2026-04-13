@@ -34,6 +34,7 @@ class HubManager:
         hub_id=None,
         path="/mcp",
         mock=False,
+        verbose: Optional[bool] = False,
     ):
         # Probably can simplify some of this between worker and hub
         self.mcp = mcp
@@ -42,6 +43,7 @@ class HubManager:
         self.path = path
         self.secret = secret or secrets.token_urlsafe(32)
         self.workers: Dict[str, Dict[str, Any]] = {}
+        self.verbose = verbose
 
         # For use if we are also a worker.
         self.worker_id = hub_id or socket.gethostname()
@@ -109,6 +111,7 @@ class HubManager:
             serial=args.serial,
             dual=args.dual,
             mock=args.mock,
+            verbose=args.verbose,
             # server path
             path=args.path,
         )

@@ -70,7 +70,7 @@ class WorkerBase:
 
             active_providers = [inst for cat in self.catalog.values() for inst in cat]
 
-            agent = SecretaryAgent(active_providers)
+            agent = SecretaryAgent(active_providers, verbose=self.verbose)
             raw_result = await agent.submit(request)
             try:
                 receipt = json.loads(utils.extract_code_block(raw_result))
