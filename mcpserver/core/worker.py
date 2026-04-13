@@ -47,17 +47,6 @@ class WorkerManager(WorkerBase):
         # Register MCP Tools automatically
         self.register_agent_tools()
 
-    def init_providers(self, mock=False):
-        """
-        Probe the local system on startup. E.g., "we found spack, flux, etc."
-        These can be faux (mock) or real discovered providers
-        """
-        logger.info("📡 Probing local system for resource providers...")
-        if mock:
-            self.catalog = discover_mock_providers(self.worker_id, choice=mock)
-        else:
-            self.catalog = discover_providers()
-
     def show(self):
         """
         Show providers installed and verbosity.

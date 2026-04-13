@@ -33,14 +33,19 @@ class HubManager:
         dual=False,
         hub_id=None,
         path="/mcp",
+        mock=False,
     ):
+        # Probably can simplify some of this between worker and hub
         self.mcp = mcp
         self.host = host
         self.port = port
         self.path = path
         self.secret = secret or secrets.token_urlsafe(32)
         self.workers: Dict[str, Dict[str, Any]] = {}
-        self.hub_id = hub_id or socket.gethostname()
+
+        # For use if we are also a worker.
+        self.worker_id = hub_id or socket.gethostname()
+        self.mock = mock
 
         # Make requests to hub in batches, in serial, or in parallel
         self.set_running_mode(batch, serial, dual)
@@ -103,6 +108,7 @@ class HubManager:
             batch=args.batch,
             serial=args.serial,
             dual=args.dual,
+            mock=args.mock,
             # server path
             path=args.path,
         )
@@ -397,12 +403,13 @@ class DualHubManager(WorkerBase, HubManager):
         # Calls super on the HubManager. WorkerBase has no init
         super().__init__(*args, **kwargs)
         self.setup_dual()
+        self.init_providers(kwargs.get("mock", False))
 
     def setup_dual(self):
         """
         Setup dual mode, which means adding ourselves to the fleet.
         """
-        hub_id = self.hub_id or socket.gethostname()
+        hub_id = self.worker_id or socket.gethostname()
         default_url = f"http://{self.host}:{self.port}{self.path}"
         self.workers[hub_id] = {
             "url": self.registration_url,
