@@ -408,3 +408,4 @@ class DualHubManager(WorkerBase, HubManager):
             "url": self.registration_url,
             "client": Client(default_url),
         }
+        self.register_agent_tools()
