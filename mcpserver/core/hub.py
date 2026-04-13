@@ -209,7 +209,10 @@ class HubManager:
 
             async with info["client"] as sess:
                 result = await sess.call_tool("submit", {"request": prompt})
-                return json.loads(utils.extract_code_block(result.content[0].text))
+                print('response in hub')
+                print(type(result))
+                print(result)
+                return self.jsonify_response(result)
 
         @self.mcp.tool(name="negotiate_job")
         async def negotiate_job(prompt: str) -> dict:
@@ -253,6 +256,7 @@ class HubManager:
                 mcp_result = await sess.call_tool("ask_secretary", {"request": prompt})
                 raw_text = mcp_result.content[0].text
 
+                # TODO: vsoch: add support to parse the calls here too (like dispatch)
                 try:
                     # Parse and handle potential quote issues in LLM JSON
                     proposal_data = json.loads(utils.extract_code_block(raw_text))
