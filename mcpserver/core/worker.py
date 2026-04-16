@@ -3,8 +3,6 @@ import socket
 from typing import Any, Dict, Optional
 
 import httpx
-from resource_secretary.providers import discover_providers
-from resource_secretary.providers.mock import discover_mock_providers
 from rich import print
 
 from mcpserver.logger import logger

@@ -209,9 +209,6 @@ class HubManager:
 
             async with info["client"] as sess:
                 result = await sess.call_tool("submit", {"request": prompt})
-                print('response in hub')
-                print(type(result))
-                print(result)
                 return self.jsonify_response(result)
 
         @self.mcp.tool(name="negotiate_job")
