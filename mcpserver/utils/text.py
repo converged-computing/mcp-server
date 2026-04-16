@@ -1,4 +1,3 @@
-import json
 import re
 
 
@@ -21,14 +20,11 @@ def format_calls(calls_block):
     """
     calls = []
     try:
-        print(calls_block)
-        print(type(calls_block))
         calls = extract_code_block(calls_block)
-        print('success to extract calls')
         return calls
     except Exception as e:
-        print(f'Issue in format calls: {e}')
-        return calls
+        print(f"Issue in format calls: {e}")
+        return calls_block
 
 
 def extract_code_block(text):

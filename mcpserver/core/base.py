@@ -2,6 +2,7 @@ import collections
 import json
 import time
 
+from resource_secretary.apps import discover_applications
 from resource_secretary.providers import discover_providers
 from resource_secretary.providers.mock import discover_mock_providers
 
@@ -15,19 +16,20 @@ class WorkerBase:
     ask secretary. We provide it here so that a hub can use it to generate
     its dual mode (acting as worker AND hub.)
     """
+
     def jsonify_response(self, result):
         """
         Ensure we get the text, and separate and parse tool calls,
         which the agent will return in a verbose mode.
         """
-        print('result')
+        print("result")
         print(result)
         print(type(result))
         if isinstance(result, dict):
             return result
         if not isinstance(result, str) and hasattr(result, "content"):
             result = result.content[0].text
-     
+
         # Audit the tool calls (Did the agent just get lucky?)
         calls = []
         if "CALLS" in result:
@@ -47,11 +49,14 @@ class WorkerBase:
         Probe the local system on startup. E.g., "we found spack, flux, etc."
         These can be faux (mock) or real discovered providers
         """
+        # We can use apps in mock or regular
+        apps = discover_applications()
         logger.info("📡 Probing local system for resource providers...")
         if mock:
             self.catalog = discover_mock_providers(self.worker_id, choice=mock)
         else:
             self.catalog = discover_providers()
+        self.catalog.update(apps)
 
     def register_agent_tools(self):
         """
