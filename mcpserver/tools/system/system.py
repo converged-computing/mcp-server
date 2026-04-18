@@ -1,13 +1,8 @@
 import os
 import time
-from typing import Any, Dict, List
-
-from resource_secretary.agents.backends import get_backend
-from resource_secretary.agents.secretary import SecretaryAgent
-from resource_secretary.providers import discover_providers
+from typing import Any, Dict
 
 from mcpserver.tools.base import BaseTool
-from mcpserver.tools.decorator import mcp
 
 
 class SystemTool(BaseTool):
@@ -16,6 +11,8 @@ class SystemTool(BaseTool):
     """
 
     def setup(self, manager=None):
+        from resource_secretary.providers import discover_providers
+
         self.manager = manager
         self.catalog = discover_providers()
 
@@ -42,6 +39,12 @@ class SystemTool(BaseTool):
         """
         Wakes up the local Secretary Agent using the configured backend.
         """
+        try:
+            from resource_secretary.agents.backends import get_backend
+            from resource_secretary.agents.secretary import SecretaryAgent
+        except ImportError:
+            return {"proposal": "This cluster cannot access resources.", "status": "SUCCESS"}
+
         # Resolve the backend instance on-demand
         backend = get_backend(
             backend_type=self.backend_config["type"],
