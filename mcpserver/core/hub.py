@@ -291,10 +291,7 @@ class HubManager:
 
         async def status_handler(wid, sess):
             info = self.workers[wid]
-            base_metadata = {
-                "labels": info.get("labels", {}),
-                "url": info["url"],
-            }
+            base_metadata = {"url": info["url"]}
 
             mcp_result = await sess.call_tool("get_status", {})
             raw_text = mcp_result.content[0].text
@@ -329,7 +326,6 @@ class HubManager:
             self.workers[wid] = {
                 "url": wurl,
                 "client": Client(wurl),
-                "labels": data.get("labels", {}),
             }
 
             # Discover tools in the background

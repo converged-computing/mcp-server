@@ -111,13 +111,6 @@ def populate_start_args(start):
         action="store_true",
         default=False,
     )
-    worker_group.add_argument(
-        "--label",
-        action="append",
-        dest="labels",
-        help="Custom labels in key=value format (e.g., --label gpu=h100). Can be used multiple times.",
-    )
-
     # const=True is what we get if the flag is present but no value is given
     # default=False is what we get if the flag is totally absent
     # THe user can also ask for an archetype (hpc, cloud, standalone)
