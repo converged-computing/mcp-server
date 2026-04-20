@@ -207,3 +207,7 @@ class ToolManager:
             endpoint = Tool.from_function(func, name=func.__name__)
             mcp.add_tool(endpoint)
             self.registered_keys.add(f"tool:{func.__name__}")
+
+# TODO STOPPED HERE - any reason we can't have the tool interface for an agent here?
+# the one that isn't mcp? Or should we put under the worker/hub so thus remove
+# from the config?

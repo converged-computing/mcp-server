@@ -42,6 +42,7 @@ def register_explicit_capabilities(mcp, cfg: MCPConfig):
     # Map configuration lists to the manager's registration methods
     registries = [
         (cfg.tools, manager.register_tool, "✅"),
+        (cfg.catalogs, manager.register_catalog, "📖"),
         (cfg.prompts, manager.register_prompt, "💬"),
         (cfg.resources, manager.register_resource, "⛰️"),
         (cfg.events, manager.register_event, "📡"),

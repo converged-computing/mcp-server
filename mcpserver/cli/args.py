@@ -38,6 +38,7 @@ def populate_start_args(start):
         "--event", action="append", help="Direct event stream to import.", default=[]
     )
     start.add_argument("--tool", action="append", help="Direct tool to import.", default=[])
+    start.add_argument("--catalog", action="append", help="Direct catalog to import.", default=[])
     start.add_argument("--resource", action="append", help="Direct resource to import.", default=[])
     start.add_argument("--prompt", action="append", help="Direct prompt to import.", default=[])
     start.add_argument("--include", help="Include tags", action="append", default=None)
