@@ -2,6 +2,8 @@ import collections
 import json
 import time
 
+from rich import print
+
 import mcpserver.utils as utils
 from mcpserver.logger import logger
 
@@ -41,6 +43,19 @@ class WorkerBase:
         """
         Probe the local system on startup. E.g., "we found spack, flux, etc."
         These can be faux (mock) or real discovered providers
+        """
+        catalog = {}
+        try:
+            catalog = self.init_resource_providers(mock)
+        except ImportError:
+            print(
+                "[red]WARN[/red]:     Provider interfaces require [green]pip install resource-secretary[/green]."
+            )
+        self.catalog = catalog
+
+    def init_resource_providers(self, mock=False):
+        """
+        Initialize resource secretary providers (real and mock)
         """
         # Not required unless serving a worker or hub.
         from resource_secretary.apps import discover_applications
