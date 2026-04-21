@@ -22,6 +22,9 @@ def get_manager(mcp, cfg: MCPConfig):
 
     # Handle explicit registration of specific paths (Tools, Prompts, Resources)
     for endpoint, emoji in register_explicit_capabilities(mcp, cfg):
+        # A repeated function will return None
+        if not endpoint:
+            continue
         print(f"   {emoji} Registered: {endpoint.name}")
 
     # Handle SSL
