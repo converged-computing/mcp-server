@@ -7,6 +7,7 @@ from fastmcp.resources import Resource
 from fastmcp.tools import Tool
 
 from mcpserver.events import get_event_manager
+from mcpserver.logger import logger
 
 from .base import BaseTool
 from .system.system import SystemTool
@@ -110,6 +111,7 @@ class ToolManager:
         func = self.load_function(tool_path)
         actual_name = name or func.__name__
         if f"tool:{actual_name}" in self.registered_keys:
+            logger.warning(f"tool {actual_name} is already registered.")
             return
         endpoint = Tool.from_function(func, name=actual_name)
         mcp.add_tool(endpoint)

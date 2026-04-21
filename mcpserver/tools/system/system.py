@@ -10,11 +10,18 @@ class SystemTool(BaseTool):
     Primary interface for cluster identity and negotiation.
     """
 
-    def setup(self, manager=None):
+    def setup_providers(self):
         from resource_secretary.providers import discover_providers
 
-        self.manager = manager
         self.catalog = discover_providers()
+        self.active_providers = [inst for category in self.catalog.values() for inst in category]
+
+    def setup(self, manager=None):
+        self.manager = manager
+        try:
+            self.setup_providers()
+        except:
+            self.active_providers = []
 
         # Capture model config from environment or manager defaults
         # manager.args would contain the CLI values from populate_start_args
@@ -23,8 +30,6 @@ class SystemTool(BaseTool):
             "model": os.getenv("RESOURCE_SECRETARY_MODEL"),
             "base": os.getenv("RESOURCE_SECRETARY_API_BASE"),
         }
-
-        self.active_providers = [inst for category in self.catalog.values() for inst in category]
 
     def build_manifest(self) -> Dict[str, Any]:
         manifest = {}
