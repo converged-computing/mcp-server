@@ -118,6 +118,28 @@ class ToolManager:
         self.registered_keys.add(f"tool:{actual_name}")
         return endpoint
 
+    def register_catalog(self, mcp, tool_path: str, name: str = None):
+        """
+        Register a catalog (a provider) with tools
+        """
+        from fastmcp.tools import Tool
+
+        module_name, _ = tool_path.rsplit(".", 1)
+        module = importlib.import_module(module_name)
+        tools = []
+        for _, obj in inspect.getmembers(module, inspect.isclass):
+            for name, func in inspect.getmembers(obj, predicate=inspect.isfunction):
+                if (
+                    hasattr(func, "is_tool")
+                    and func.is_tool
+                    and f"tool:{name}" not in self.registered_keys
+                ):
+                    endpoint = Tool.from_function(func, name=name)
+                    mcp.add_tool(endpoint)
+                    self.registered_keys.add(f"tool:{name}")
+                    tools.append(endpoint)
+        return tools
+
     def register_resource(self, mcp, tool_path: str, name: str = None):
         """
         Register a resource.
@@ -209,7 +231,3 @@ class ToolManager:
             endpoint = Tool.from_function(func, name=func.__name__)
             mcp.add_tool(endpoint)
             self.registered_keys.add(f"tool:{func.__name__}")
-
-# TODO STOPPED HERE - any reason we can't have the tool interface for an agent here?
-# the one that isn't mcp? Or should we put under the worker/hub so thus remove
-# from the config?

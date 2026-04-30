@@ -25,7 +25,13 @@ def get_manager(mcp, cfg: MCPConfig):
         # A repeated function will return None
         if not endpoint:
             continue
-        print(f"   {emoji} Registered: {endpoint.name}")
+
+        # Catalog can include a listing of tools
+        if isinstance(endpoint, list):
+            for e in endpoint:
+                print(f"   {emoji} Registered: {e.name}")
+        else:
+            print(f"   {emoji} Registered: {endpoint.name}")
 
     # Handle SSL
     if cfg.server.ssl_keyfile is not None and cfg.server.ssl_certfile is not None:
