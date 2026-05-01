@@ -38,6 +38,7 @@ def populate_start_args(start):
         "--event", action="append", help="Direct event stream to import.", default=[]
     )
     start.add_argument("--tool", action="append", help="Direct tool to import.", default=[])
+    start.add_argument("--catalog", action="append", help="Direct catalog to import.", default=[])
     start.add_argument("--resource", action="append", help="Direct resource to import.", default=[])
     start.add_argument("--prompt", action="append", help="Direct prompt to import.", default=[])
     start.add_argument("--include", help="Include tags", action="append", default=None)
@@ -111,13 +112,6 @@ def populate_start_args(start):
         action="store_true",
         default=False,
     )
-    worker_group.add_argument(
-        "--label",
-        action="append",
-        dest="labels",
-        help="Custom labels in key=value format (e.g., --label gpu=h100). Can be used multiple times.",
-    )
-
     # const=True is what we get if the flag is present but no value is given
     # default=False is what we get if the flag is totally absent
     # THe user can also ask for an archetype (hpc, cloud, standalone)

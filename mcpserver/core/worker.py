@@ -23,7 +23,6 @@ class WorkerManager(WorkerBase):
         secret: str,
         worker_id: Optional[str] = None,
         public_url: Optional[str] = None,
-        labels: Optional[list] = None,
         mock: Optional[bool] = False,
         verbose: Optional[bool] = False,
     ):
@@ -38,9 +37,6 @@ class WorkerManager(WorkerBase):
 
         # Static Manifest for the worker
         self.manifest = self.build_manifest()
-
-        # Note from vsoch: not sure if this will be useful / what we should use for.
-        self.labels = self.parse_labels(labels)
 
         # Register MCP Tools automatically
         self.register_agent_tools()
@@ -65,19 +61,6 @@ class WorkerManager(WorkerBase):
             manifest[category] = {inst.name: inst.metadata for inst in instances}
         return manifest
 
-    def parse_labels(self, label_list: Optional[list]) -> dict:
-        """
-        Converts ['key=val', 'key2=val2'] to a dictionary.
-        """
-        labels = {}
-        if not label_list:
-            return labels
-        for item in label_list:
-            if "=" in item:
-                k, v = item.split("=", 1)
-                labels[k.strip()] = v.strip()
-        return labels
-
     async def run_registration(self):
         """
         Registers the worker with the Hub.
@@ -88,7 +71,6 @@ class WorkerManager(WorkerBase):
             payload = {
                 "id": self.worker_id,
                 "url": self.public_url,
-                "labels": self.labels,
                 "manifest": self.manifest,
             }
             headers = {"X-MCP-Token": self.secret}
@@ -119,6 +101,5 @@ class WorkerManager(WorkerBase):
             secret=args.join_secret,
             worker_id=args.worker_id,
             public_url=public_url,
-            labels=args.labels,
             verbose=args.verbose,
         )

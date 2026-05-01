@@ -118,6 +118,37 @@ class ToolManager:
         self.registered_keys.add(f"tool:{actual_name}")
         return endpoint
 
+    def register_catalog(self, mcp, tool_path: str, name: str = None):
+        """
+        Register a catalog (a provider) with tools
+        """
+
+        module_name, class_name = tool_path.rsplit(".", 1)
+        module = importlib.import_module(module_name)
+
+        tools = []
+        for attr_name, obj in inspect.getmembers(module, inspect.isclass):
+            if attr_name != class_name:
+                continue
+
+            # Instantiate the class so methods are bound and self is resolved
+            instance = obj()
+            if hasattr(instance, "probe"):
+                instance.probe()
+
+            for method_name, method in inspect.getmembers(instance, predicate=inspect.ismethod):
+                if (
+                    hasattr(method, "is_tool")
+                    and method.is_tool
+                    and f"tool:{method_name}" not in self.registered_keys
+                ):
+                    endpoint = Tool.from_function(method, name=method_name)
+                    mcp.add_tool(endpoint)
+                    self.registered_keys.add(f"tool:{method_name}")
+                    tools.append(endpoint)
+
+            return tools
+
     def register_resource(self, mcp, tool_path: str, name: str = None):
         """
         Register a resource.

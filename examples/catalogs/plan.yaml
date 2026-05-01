@@ -1,0 +1,13 @@
+name: Snakemake Tutorial Workflow
+agents:
+  - path: fractale_agents.hpc.workflow.SnakemakeWorkflowAgent
+steps:
+  - name: tutorial
+    type: agent
+    tool: snakemake-workflow
+    inputs:
+      goal: | 
+        Map E. coli sequencing reads from samples A, B, and C to the reference genome,
+        sort and index the resulting alignments, then call genomic variants across all
+        three samples jointly. The reference genome and reads are in the INPUT_DIR.
+        Write all outputs to WORK_DIR.
