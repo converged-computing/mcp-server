@@ -452,6 +452,7 @@ Here are a few design choices (subject to change, of course). I am starting with
 - [ ] need way to "pass forward" an error from a worker that, for example, API key not set.
 - [ ] I want to have the equivalent of a satisfy endpoint, checking for the negotiate but not dispatch.
 - [ ] I also want an equivalent "just submit to this cluster" endpoint.
+- [ ] likely we want an ability to one off disabling probing or specific providers
 
 Idea:
 

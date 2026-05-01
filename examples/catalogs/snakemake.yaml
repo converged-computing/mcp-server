@@ -1,0 +1,3 @@
+catalogs:
+  - path: resource_secretary.providers.workflow.SnakemakeProvider
+    name: snakemake
