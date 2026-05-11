@@ -66,6 +66,7 @@ The following variables can be set in the environment.
 | `MCPSERVER_TOKEN` | Token to use for testing | unset |
 
 
+
 ## Usage
 
 ### Start the Server
@@ -272,6 +273,27 @@ mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8
 mcpserver start --config examples/jobspec/mcpserver.yaml --join http://0.0.0.0:8000 --port 7777 --archetype hpc
 ```
 
+### Providers Interface
+
+When you bring up a hub and workers, by default we will use the [resource-secretary](https://github.com/converged-computing/resource-secretary) library to create real and/or mock providers to add to it. If you do not have this installed it will still come up, but without these tools for the agent. In addition, you can add your own catalogs of tools for your hierarchy. Add them to the mcpserver.yaml. Here is a simple example:
+
+```yaml
+tools:
+  - path: flux_mcp.validate.flux_validate_jobspec
+  - path: hpc_mcp.filesystem.filesystem_write_file
+catalogs:
+  - path: snakemake_agent.catalog.SnakemakeCatalog
+    name: snakemake
+```
+
+A catalog is a provider that is not probed for automatically, and they can be provisioned by the library here (as the example above) or externally. They typically are not probed for because the user should request using it. As an example, snakemake is going to clone snakemake-wrappers, which is a system change even if just writing to a temporary directory. You would never want to do that automatically.
+
+Adding this catalog will expose interfaces for your worker to provide Snakemake functions, more specifically wrappers, to use. If you want to implement a catalog, you can make a basic class with `probe` that needs to return True/False to determine if it should be used, and then appropriate functions you want to expose. We support the following decorators for the Worker Secretary Agent:
+
+- `workflow_tool`: A tool intended for use when the workflow agent is running a workflow
+- `dispatch_tool`: revealed when a secretary agent is deciding to dispatch work.
+- `secretary_tool`: revealed when a secretary agent is negotiating (e.g., "Can I satisfy this request?")
+
 ### Mocking a Hub
 
 If you are doing experiments, you can bring up a hub the same way:
@@ -430,6 +452,7 @@ Here are a few design choices (subject to change, of course). I am starting with
 - [ ] need way to "pass forward" an error from a worker that, for example, API key not set.
 - [ ] I want to have the equivalent of a satisfy endpoint, checking for the negotiate but not dispatch.
 - [ ] I also want an equivalent "just submit to this cluster" endpoint.
+- [ ] likely we want an ability to one off disabling probing or specific providers
 
 Idea:
 
